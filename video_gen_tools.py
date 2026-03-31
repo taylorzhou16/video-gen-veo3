@@ -1000,27 +1000,52 @@ class SunoClient:
 class TTSClient:
     """火山引擎 TTS 客户端"""
 
-    VOICE_MAP = {
-        "female_narrator": "BV001_stream_flow",
-        "female_gentle": "BV700_stream_flow",
-        "male_narrator": "BV002_stream_flow",
-        "male_warm": "BV406_stream_flow",
+    VOICE_TYPES = {
+        "female_narrator": "BV700_streaming",
+        "female_gentle": "BV034_streaming",
+        "male_narrator": "BV701_streaming",
+        "male_warm": "BV033_streaming",
+    }
+
+    EMOTION_MAP = {
+        "neutral": None,
+        "happy": "happy",
+        "sad": "sad",
+        "gentle": "gentle",
+        "serious": "serious",
     }
 
     async def synthesize(self, text: str, output: str, voice: str = "female_narrator", emotion: str = None, speed: float = 1.0) -> Dict[str, Any]:
         import httpx
+        import uuid
+        import base64
 
-        voice_id = self.VOICE_MAP.get(voice, "BV001_stream_flow")
+        voice_type = self.VOICE_TYPES.get(voice, "BV700_streaming")
+
         payload = {
-            "app_id": Config.VOLCENGINE_TTS_APP_ID,
-            "user_id": "vico_user",
-            "content": [{"text": text, "type": "text"}],
-            "audio_config": {
-                "voice_type": voice_id,
+            "app": {
+                "appid": Config.VOLCENGINE_TTS_APP_ID,
+                "token": "access_token",
+                "cluster": "volcano_tts",
+            },
+            "user": {"uid": "vico_tts_user"},
+            "audio": {
+                "voice_type": voice_type,
+                "encoding": "mp3",
+                "rate": 24000,
                 "speed_ratio": speed,
-                "audio_type": "mp3"
-            }
+                "volume_ratio": 1.0,
+            },
+            "request": {
+                "reqid": str(uuid.uuid4()),
+                "text": text,
+                "text_type": "plain",
+                "operation": "query",
+            },
         }
+
+        if emotion and emotion in self.EMOTION_MAP and self.EMOTION_MAP[emotion]:
+            payload["audio"]["emotion"] = self.EMOTION_MAP[emotion]
 
         logger.info(f"🔊 TTS合成: {text[:30]}...")
 
@@ -1031,25 +1056,28 @@ class TTSClient:
                     json=payload,
                     headers={
                         "Content-Type": "application/json",
-                        "Authorization": f"Bearer; {Config.VOLCENGINE_TTS_TOKEN}"
+                        "Authorization": f"Bearer;{Config.VOLCENGINE_TTS_TOKEN}",
                     }
                 )
                 response.raise_for_status()
+                result = response.json()
 
-                Path(output).parent.mkdir(parents=True, exist_ok=True)
-                with open(output, 'wb') as f:
-                    f.write(response.content)
+            code = result.get("code", -1)
+            if code != 3000:
+                return {"success": False, "error": result.get("message", f"API error: {code}")}
 
-                import subprocess
-                result = subprocess.run(
-                    ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
-                     '-of', 'default=noprint_wrappers=1:nokey=1', output],
-                    capture_output=True, text=True
-                )
-                duration_ms = int(float(result.stdout.strip()) * 1000) if result.stdout.strip() else 0
+            audio_data = base64.b64decode(result.get("data", ""))
+            if not audio_data:
+                return {"success": False, "error": "Empty audio data"}
 
-                logger.info(f"✅ TTS已保存: {output} ({duration_ms}ms)")
-                return {"success": True, "output": output, "duration_ms": duration_ms}
+            Path(output).parent.mkdir(parents=True, exist_ok=True)
+            with open(output, "wb") as f:
+                f.write(audio_data)
+
+            duration_ms = int(result.get("addition", {}).get("duration", "0"))
+            logger.info(f"✅ TTS已保存: {output} ({duration_ms}ms)")
+
+            return {"success": True, "output": output, "duration_ms": duration_ms}
 
         except Exception as e:
             logger.error(f"❌ TTS失败: {e}")
@@ -1421,7 +1449,7 @@ async def cmd_tts(args):
         return 1
 
     client = TTSClient()
-    result = await client.synthesize(text=args.text, output=args.output, voice=args.voice, speed=args.speed)
+    result = await client.synthesize(text=args.text, output=args.output, voice=args.voice, emotion=args.emotion, speed=args.speed)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result.get("success") else 1
 
@@ -1500,6 +1528,7 @@ def main():
     tts_parser.add_argument("--text", "-t", required=True)
     tts_parser.add_argument("--output", "-o", required=True)
     tts_parser.add_argument("--voice", "-v", default="female_narrator")
+    tts_parser.add_argument("--emotion", "-e", default=None, choices=["neutral", "happy", "sad", "gentle", "serious"])
     tts_parser.add_argument("--speed", type=float, default=1.0)
 
     args = parser.parse_args()

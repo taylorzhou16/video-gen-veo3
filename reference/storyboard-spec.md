@@ -10,6 +10,7 @@
 - 两阶段流程（虚构片）
 - 首帧生成策略
 - 台词融入 video_prompt
+- 旁白分段规划（narration_segments）
 - Storyboard JSON 格式
 - Review 检查机制
 - 展示给用户确认
@@ -221,6 +222,62 @@ BGM 由后期合成，不在视频生成阶段处理：
 - `bgm.type = "ai_generated"` → Suno 生成 BGM，后期混音
 - `bgm.type = "user_provided"` → 用户提供 BGM，后期混音
 - `bgm.type = "none"` → 无 BGM
+
+---
+
+## 旁白分段规划（narration_segments）
+
+### 触发条件
+
+当 `creative.json` 的 `narration.type` 不为 `none` 时，需要规划旁白分段。
+
+### 字段结构
+
+```json
+{
+  "narration_config": {
+    "voice_style": "温柔女声"    // 映射到 TTS 的 voice + emotion 参数
+  },
+  "narration_segments": [
+    {
+      "segment_id": "narr_1",
+      "overall_time_range": "0-3s",
+      "text": "这是一个宁静的下午..."
+    },
+    {
+      "segment_id": "narr_2",
+      "overall_time_range": "8-11s",
+      "text": "她坐在窗边..."
+    }
+  ]
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `narration_config.voice_style` | string | 旁白风格描述，映射到 TTS 参数 |
+| `narration_segments` | array | 旁白分段列表 |
+| `segment_id` | string | 分段编号（narr_1, narr_2...） |
+| `overall_time_range` | string | 时间范围，从视频起点（0秒）开始计算 |
+| `text` | string | 旁白文案 |
+
+### 规划原则
+
+1. **时间计算**：`overall_time_range` 从视频起点开始，格式为 `"起始秒-结束秒"`
+2. **避开台词**：不要与有角色台词的镜头冲突
+3. **分段长度**：每段控制在 2-5 秒可说完的长度（约 30-50 字）
+4. **内容呼应**：旁白内容要与对应镜头的画面呼应
+
+### voice_style 到 TTS 参数映射
+
+| voice_style | voice | emotion |
+|-------------|-------|---------|
+| "温柔女声" | `female_gentle` | `gentle` |
+| "专业女声旁白" | `female_narrator` | `neutral` |
+| "磁性男声" | `male_warm` | `neutral` |
+| "严肃男声" | `male_narrator` | `serious` |
 
 ---
 

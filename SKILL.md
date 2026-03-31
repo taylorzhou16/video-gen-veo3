@@ -181,9 +181,38 @@ manager.register("主角", "male", None, "短发、运动风格")
 - 选项：自动生成（Veo 3 自动生成环境音/台词）| 不需要音频
 - 说明：Veo 3 自动生成环境音、音效、简单对话（同期声）
 
-**问题 6: 旁白（后期配音）**
-- 选项：不需要旁白 | AI生成旁白 | 我已有文案
-- 说明：TTS 用于生成片头/片尾解说、场景描述旁白。**旁白与同期声分开处理，后期配音合成**
+**问题 6: 旁白/解说**
+
+**先判断视频类型是否适合加旁白**：
+
+| 视频风格 | 旁白需求 | 说明 |
+|---------|---------|------|
+| 电影感/虚构片 | 通常不需要 | 角色台词为主，旁白会破坏沉浸感 |
+| 纪录片 | 通常需要 | 场景解说、背景介绍 |
+| Vlog风格 | 可能需要 | 旅行解说、心情记录 |
+| 广告片 | 可能需要 | 产品介绍、品牌故事 |
+| 艺术/实验 | 视情况 | 概念表达可能需要旁白 |
+
+**拿不准时询问用户**：
+
+> 这条视频是否需要旁白/解说？
+> - **不需要旁白**（角色台词为主，或纯视觉表达）
+> - **需要AI生成旁白**（我来根据分镜设计文案）
+> - **我已有旁白文案**（用户提供完整文案）
+
+**区分两种音频生成方式**：
+
+**A. 角色台词（同期声）**
+- 由 Veo 3 视频生成模型直接生成
+- 需要在分镜的 video_prompt 中明确描述：角色、台词、情绪、语速、声音特质
+- 视频生成时设置 `audio: true`
+
+**B. 旁白/解说（后期配音）**
+- 由 TTS 后期生成，在剪辑阶段合入
+- 用于场景解说、背景介绍、情感烘托
+- Phase 3 会根据分镜设计旁白文案和时间点
+
+**重要原则**：能收同期声的镜头，都不要用后期 TTS 配音！
 
 **问题 7: 配乐需求**
 - 选项：AI生成BGM | 不需要配乐 | 我已有音乐
@@ -207,6 +236,24 @@ manager.register("主角", "male", None, "短发、运动风格")
 - `creative/creative.json` — 创意方案
 - 更新 `personas.json` — 补充 reference_images（如有）
 - `creative/decision_log.json` — 决策记录
+
+**creative.json narration 字段结构**：
+
+```json
+{
+  "narration": {
+    "type": "ai_generated",           // none / ai_generated / user_provided
+    "voice_style": "温柔女声",        // 旁白风格（ai_generated 时由用户指定）
+    "user_text": "用户提供的完整旁白文案"  // user_provided 时必填
+  }
+}
+```
+
+| type | 说明 | Phase 3 处理 |
+|------|------|-------------|
+| `none` | 不需要旁白 | 不规划 narration_segments |
+| `ai_generated` | AI 设计文案 | 根据分镜自动撰写旁白，按镜头分段 |
+| `user_provided` | 用户已有文案 | 将 user_text 按镜头时间点分段 |
 
 ---
 
@@ -320,6 +367,33 @@ storyboard["elements"] = {"characters": characters}
 **完整分镜规范**：See [reference/storyboard-spec.md](reference/storyboard-spec.md)
 **Prompt 编写规范**：See [reference/prompt-guide.md](reference/prompt-guide.md)
 
+**生成分镜时同步处理旁白**：
+
+若 `creative.narration.type` 不为 `none`，则在生成分镜的同时规划旁白分段：
+
+1. **读取 narration 信息**：
+   - `voice_style` → 写入 `narration_config.voice_style`
+   - `user_text`（如有）→ 按镜头时间点分段
+
+2. **根据镜头内容设计旁白文案**：
+   - 每段旁白对应一个镜头或一组连续镜头
+   - 每段控制在 2-5 秒可说完的长度（约 30-50 字）
+   - 避开有角色台词的镜头（不要与同期声冲突）
+
+3. **规划时间点并写入 storyboard.json**：
+
+```json
+{
+  "narration_config": {
+    "voice_style": "温柔女声"
+  },
+  "narration_segments": [
+    {"segment_id": "narr_1", "overall_time_range": "0-3s", "text": "这是一个宁静的下午..."},
+    {"segment_id": "narr_2", "overall_time_range": "8-11s", "text": "她坐在窗边..."}
+  ]
+}
+```
+
 ### Step 4: 展示给用户确认（强制步骤）
 
 **必须在用户明确确认后才能进入 Phase 4！**
@@ -334,11 +408,11 @@ storyboard["elements"] = {"characters": characters}
 - 时长
 - 转场
 
-提供选项：确认并执行 / 修改分镜 / 调整时长 / 更换转场 / 取消
+提供选项：确认并执行 / 修改分镜 / 调整旁白 / 调整时长 / 更换转场 / 取消
 
 ### Phase 3 产出
 
-- `storyboard/storyboard.json` — 分镜脚本
+- `storyboard/storyboard.json` — 分镜脚本（包含 generation_mode、frame_path、narration_segments）
 
 ---
 
@@ -426,11 +500,44 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py music \
   --output generated/music/bgm.mp3
 ```
 
+### 旁白生成（条件触发）
+
+**触发条件**：读取 `storyboard.json` 的 `narration_segments`，若存在则触发。
+
+**生成流程**：
+
+1. **读取 narration_config 和 narration_segments**
+2. **按分段逐个调用 TTS**：
+
+```bash
+# 每段旁白单独生成
+python ~/.claude/skills/video-gen-veo3/video_gen_tools.py tts \
+  --text "这是一个宁静的下午..." \
+  --voice female_narrator \
+  --emotion gentle \
+  --output generated/narration/narr_1.mp3
+
+python ~/.claude/skills/video-gen-veo3/video_gen_tools.py tts \
+  --text "她坐在窗边..." \
+  --voice female_narrator \
+  --emotion gentle \
+  --output generated/narration/narr_2.mp3
+```
+
+3. **输出文件命名**：按 `segment_id` 命名（`narr_1.mp3`, `narr_2.mp3`...）
+
+**执行顺序**：
+```
+视频片段生成 → 音乐生成 → 旁白生成（如有）→ 进入 Phase 5 剪辑
+```
+
 ### Phase 4 产出
 
 - `generated/videos/*.mp4` — 生成的视频片段
 - `generated/frames/*.png` — 生成的分镜图（如有）
 - `generated/music/*.mp3` — 生成的背景音乐（如有）
+- `generated/narration/*.mp3` — 生成的旁白音频（如有）
+- 更新 `state.json` — 记录生成进度
 
 ---
 
@@ -456,10 +563,31 @@ python ~/.claude/skills/video-gen-veo3/video_gen_editor.py concat \
 ### 合成流程
 
 1. **拼接** → 按分镜顺序连接（自动归一化）
-2. **转场** → 添加镜头间转场效果
-3. **调色** → 应用整体调色风格
-4. **配乐** → 混合背景音乐
-5. **输出** → 生成最终视频
+2. **插入旁白** → 按 `narration_segments` 的 `overall_time_range` 将旁白音频配到正确位置（如有）
+3. **转场** → 添加镜头间转场效果
+4. **调色** → 应用整体调色风格
+5. **配乐** → 混合背景音乐
+6. **输出** → 生成最终视频
+
+### 旁白插入（条件触发）
+
+**触发条件**：读取 `storyboard.json` 的 `narration_segments`，若存在则触发。
+
+**插入方式**：使用 FFmpeg 在指定时间点插入旁白音频。
+
+```bash
+# 按 overall_time_range 插入旁白
+python ~/.claude/skills/video-gen-veo3/video_gen_editor.py narration \
+  --video concat_output.mp4 \
+  --storyboard storyboard/storyboard.json \
+  --narration-dir generated/narration \
+  --output with_narration.mp4
+```
+
+**时间点计算**：
+- `overall_time_range` 格式：`"0-3s"` 表示从 0 秒开始，持续到 3 秒
+- 旁白音频在 `overall_time_range` 的起始时间点插入
+- 多段旁白按时间顺序依次叠加
 
 ### Phase 5 产出
 
@@ -505,17 +633,25 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py music \
   --creative creative/creative.json \
   --output <输出>
 
-# TTS 旁白
+# 旁白（按 narration_segments 分段调用）
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py tts \
-  --text <文本> \
+  --text <分段文案> \
   --voice female_narrator \
-  --output <输出>
+  --emotion gentle \
+  --output generated/narration/narr_1.mp3
 
 # 剪辑（传 --storyboard）
 python ~/.claude/skills/video-gen-veo3/video_gen_editor.py concat \
   --inputs <视频列表> \
   --output <输出> \
   --storyboard storyboard/storyboard.json
+
+# 旁白插入（按 overall_time_range 插入）
+python ~/.claude/skills/video-gen-veo3/video_gen_editor.py narration \
+  --video <视频> \
+  --storyboard storyboard/storyboard.json \
+  --narration-dir generated/narration \
+  --output <输出>
 ```
 
 ---
@@ -533,11 +669,12 @@ python ~/.claude/skills/video-gen-veo3/video_gen_editor.py concat \
 │   ├── creative.json    # 创意方案
 │   └── decision_log.json # 决策记录
 ├── storyboard/
-│   └ storyboard.json   # 分镜脚本
+│   └ storyboard.json   # 分镜脚本（含 narration_segments）
 ├── generated/
 │   ├── frames/          # 生成的分镜图
 │   ├── videos/          # 生成的视频
-│   └── music/           # 生成的音乐
+│   ├── music/           # 生成的音乐
+│   └── narration/       # 生成的旁白音频
 └── output/
     └── final.mp4        # 最终视频
 ```
