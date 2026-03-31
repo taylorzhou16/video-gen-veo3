@@ -1319,20 +1319,23 @@ async def cmd_video(args):
     if args.storyboard:
         aspect_ratio = get_aspect_from_storyboard(args.storyboard) or aspect_ratio
 
-    # 自动选择时长
+    # 时长处理
     duration = args.duration
     resolution = args.resolution
 
-    if duration is None:
-        # 未指定时长，自动选择
-        if resolution in ["1080p", "4k"]:
-            # 1080p/4k 必须用 8 秒
+    # 1080p/4k 必须用 8 秒
+    if resolution in ["1080p", "4k"]:
+        if duration is None:
             duration = 8
-            logger.info(f"📐 分辨率 {resolution} 自动选择时长: {duration}秒")
-        else:
-            # 720p 默认 4 秒（普通镜头，更省资源）
-            duration = 4
-            logger.info(f"📐 默认时长: {duration}秒（普通镜头）")
+            logger.info(f"📐 分辨率 {resolution} 自动使用 8秒时长")
+        elif duration != 8:
+            logger.warning(f"⚠️ 分辨率 {resolution} 必须使用 8秒时长，已自动调整 ({duration}秒 → 8秒)")
+            duration = 8
+
+    # 720p 必须指定时长（通过 --duration 或 storyboard.json）
+    if duration is None:
+        print(json.dumps({"success": False, "error": "请通过 --duration 指定时长，或在 storyboard.json 中设计"}, indent=2, ensure_ascii=False))
+        return 1
 
     # 图片尺寸验证与处理
     image_path = args.image
