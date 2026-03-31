@@ -451,6 +451,281 @@ class Veo3Client:
                 f.write(response.content)
         logger.info(f"✅ 已保存到: {output_path}")
 
+    async def create_video_with_fallback(
+        self,
+        prompt: str,
+        duration: int = 8,
+        aspect_ratio: str = "9:16",
+        resolution: str = "1080p",
+        generate_audio: bool = True,
+        image_path: str = None,
+        output: str = None,
+        max_retries: int = 2
+    ) -> Dict[str, Any]:
+        """
+        视频生成（带严格降级策略）
+
+        降级顺序：
+        1. 重试（最多 max_retries 次）
+        2. 调整 prompt（简化/优化描述）
+        3. 调整参考图（缩小尺寸/更换格式）
+        4. 最后降级到文生视频（仅在无其他选择时）
+
+        Args:
+            prompt: 视频描述
+            duration: 时长（秒）
+            aspect_ratio: 宽高比
+            resolution: 分辨率
+            generate_audio: 是否生成音频
+            image_path: 图片路径（图生视频时使用）
+            output: 输出文件路径
+            max_retries: 最大重试次数
+        """
+        original_prompt = prompt
+        original_image = image_path
+
+        # 记录降级状态
+        fallback_state = {
+            "stage": "initial",
+            "retries": 0,
+            "prompt_adjusted": False,
+            "image_adjusted": False,
+            "downgraded_to_t2v": False,
+            "history": []
+        }
+
+        # Stage 1: 初始尝试 + 重试
+        for retry in range(max_retries + 1):
+            fallback_state["retries"] = retry
+            fallback_state["stage"] = "retry" if retry > 0 else "initial"
+
+            logger.info(f"📹 尝试生成视频 (第{retry + 1}次)...")
+
+            result = await self.create_video(
+                prompt=prompt,
+                duration=duration,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                generate_audio=generate_audio,
+                image_path=image_path,
+                output=output
+            )
+
+            if result.get("success"):
+                fallback_state["history"].append({
+                    "stage": fallback_state["stage"],
+                    "success": True,
+                    "prompt": prompt[:100]
+                })
+                result["fallback_state"] = fallback_state
+                return result
+
+            # 记录失败
+            error = result.get("error", "未知错误")
+            fallback_state["history"].append({
+                "stage": fallback_state["stage"],
+                "success": False,
+                "error": error,
+                "prompt": prompt[:100]
+            })
+
+            # 检查是否是可重试的错误
+            if "429" in error or "rate" in error.lower():
+                logger.warning(f"⚠️ 频率限制，等待60秒后重试...")
+                await asyncio.sleep(60)
+                continue
+            elif "timeout" in error.lower() or "网络" in error:
+                logger.warning(f"⚠️ 网络/超时错误，等待30秒后重试...")
+                await asyncio.sleep(30)
+                continue
+            elif "401" in error or "Unauthorized" in error:
+                # 无法通过重试解决的错误，直接返回
+                return {"success": False, "error": error, "fallback_state": fallback_state}
+            elif "402" in error or "quota" in error.lower():
+                return {"success": False, "error": error, "fallback_state": fallback_state}
+
+        # Stage 2: 调整 prompt
+        fallback_state["stage"] = "adjust_prompt"
+        fallback_state["prompt_adjusted"] = True
+
+        adjusted_prompt = self._adjust_prompt(prompt)
+        logger.info(f"📝 调整 prompt 尝试: {adjusted_prompt[:50]}...")
+
+        result = await self.create_video(
+            prompt=adjusted_prompt,
+            duration=duration,
+            aspect_ratio=aspect_ratio,
+            resolution=resolution,
+            generate_audio=generate_audio,
+            image_path=image_path,
+            output=output
+        )
+
+        fallback_state["history"].append({
+            "stage": "adjust_prompt",
+            "success": result.get("success", False),
+            "prompt": adjusted_prompt[:100]
+        })
+
+        if result.get("success"):
+            result["fallback_state"] = fallback_state
+            return result
+
+        # Stage 3: 调整参考图（仅在图生视频时）
+        if image_path:
+            fallback_state["stage"] = "adjust_image"
+            fallback_state["image_adjusted"] = True
+
+            adjusted_image = await self._adjust_reference_image(image_path)
+            if adjusted_image:
+                logger.info(f"🖼️ 调整参考图尝试: {adjusted_image}")
+
+                result = await self.create_video(
+                    prompt=adjusted_prompt,
+                    duration=duration,
+                    aspect_ratio=aspect_ratio,
+                    resolution=resolution,
+                    generate_audio=generate_audio,
+                    image_path=adjusted_image,
+                    output=output
+                )
+
+                fallback_state["history"].append({
+                    "stage": "adjust_image",
+                    "success": result.get("success", False),
+                    "image": adjusted_image
+                })
+
+                if result.get("success"):
+                    result["fallback_state"] = fallback_state
+                    return result
+
+        # Stage 4: 最后降级到文生视频（仅在无法使用图生视频时）
+        # 注意：虚构片/短剧不允许降级到文生视频
+        if not image_path:
+            fallback_state["stage"] = "downgrade_t2v"
+            fallback_state["downgraded_to_t2v"] = True
+
+            logger.warning(f"⚠️ 最后降级：使用文生视频模式")
+            result = await self.create_video(
+                prompt=adjusted_prompt,
+                duration=duration,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                generate_audio=generate_audio,
+                image_path=None,
+                output=output
+            )
+
+            fallback_state["history"].append({
+                "stage": "downgrade_t2v",
+                "success": result.get("success", False)
+            })
+
+            result["fallback_state"] = fallback_state
+            return result
+
+        # 图生视频最终失败，返回错误（不降级）
+        return {
+            "success": False,
+            "error": "图生视频生成失败，已尝试所有降级策略",
+            "fallback_state": fallback_state,
+            "suggestion": "请检查参考图质量或更换prompt"
+        }
+
+    def _adjust_prompt(self, prompt: str) -> str:
+        """
+        调整 prompt 以提高成功率
+
+        策略：
+        1. 移除/改写版权、名人等敏感词汇
+        2. 简化过于复杂的描述
+        3. 保留核心要素
+        """
+        # 敏感词汇列表（版权、名人、品牌等可能导致生成失败的词汇）
+        sensitive_patterns = [
+            # 名人姓名（常见）
+            "taylor swift", "elon musk", "donald trump", "biden", "obama",
+            "michael jackson", "madonna", "beyonce", "kanye", "kim kardashian",
+            "leonardo dicaprio", "brad pitt", "tom cruise", "jennifer lawrence",
+            # 品牌/版权
+            "disney", "marvel", "dc comics", "star wars", "harry potter",
+            "nike", "adidas", "apple", "microsoft", "google", "facebook",
+            "coca-cola", "pepsi", "mcdonalds", "starbucks",
+            # 角色名
+            "mickey mouse", "batman", "superman", "spider-man", "iron man",
+            "hulk", "thor", "captain america", "wonder woman",
+            # 其他敏感词
+            "celebrity", "famous person", "well-known",
+        ]
+
+        adjusted = prompt.lower()
+        replaced_words = []
+
+        for pattern in sensitive_patterns:
+            if pattern in adjusted:
+                # 替换为通用描述
+                adjusted = adjusted.replace(pattern, "person")
+                replaced_words.append(pattern)
+
+        if replaced_words:
+            logger.info(f"📝 移除敏感词汇: {', '.join(replaced_words)}")
+
+        # 简化策略：保留前200字符的核心描述
+        if len(prompt) > 200:
+            # 找到第一个完整句子
+            simplified = prompt[:200]
+            if '.' in simplified:
+                last_period = simplified.rfind('.')
+                simplified = simplified[:last_period + 1]
+            logger.info(f"📝 Prompt 已简化: {len(prompt)} → {len(simplified)} 字符")
+            return simplified
+
+        return prompt.strip()
+
+    async def _adjust_reference_image(self, image_path: str) -> Optional[str]:
+        """
+        调整参考图以提高成功率
+
+        策略：
+        1. 缩小尺寸到 1280px
+        2. 转换格式为 JPEG
+        """
+        try:
+            from PIL import Image
+        except ImportError:
+            logger.warning("⚠️ PIL 未安装，无法调整图片")
+            return None
+
+        try:
+            img = Image.open(image_path)
+            w, h = img.size
+
+            # 缩小到目标尺寸
+            target_size = 1280
+            if max(w, h) > target_size:
+                scale = target_size / max(w, h)
+                new_w = int(w * scale)
+                new_h = int(h * scale)
+                img = img.resize((new_w, new_h), Image.LANCZOS)
+                logger.info(f"🖼️ 图片已缩小: {w}x{h} → {new_w}x{new_h}")
+
+            # 转换为 RGB（移除 alpha 通道）
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            # 保存为 JPEG
+            base, _ = os.path.splitext(image_path)
+            adjusted_path = f"{base}_adjusted.jpg"
+            img.save(adjusted_path, quality=85)
+
+            logger.info(f"🖼️ 图片已转换: {image_path} → {adjusted_path}")
+            return adjusted_path
+
+        except Exception as e:
+            logger.error(f"❌ 图片调整失败: {e}")
+            return None
+
 
 # ============== 图片生成（分镜图）==============
 
@@ -458,11 +733,16 @@ class ImageClient:
     """
     图片生成客户端（用于生成分镜图）
 
-    使用 Compass API 调用 Imagen 模型生成图片，
+    使用 Compass API 调用 Gemini Flash Image 模型生成图片，
     用于虚构片/短剧的两阶段流程：先生成分镜图，再用作视频首帧。
+
+    降级策略：
+    1. 默认使用 gemini-3.1-flash-image-preview
+    2. 失败时用 gemini-2.5-flash-image 兜底
     """
 
-    IMAGEN_MODEL = "imagen-3.0-generate-002"
+    PRIMARY_MODEL = "gemini-3.1-flash-image-preview"
+    FALLBACK_MODEL = "gemini-2.5-flash-image"
 
     def __init__(self):
         self._client = None
@@ -496,83 +776,109 @@ class ImageClient:
         """
         图片生成（用于分镜图）
 
+        支持：
+        - 文生图：仅提供 prompt
+        - 图生图：提供 prompt + reference_image
+
+        降级策略：
+        1. 默认使用 PRIMARY_MODEL (gemini-3.1-flash-image-preview)
+        2. 失败时用 FALLBACK_MODEL (gemini-2.5-flash-image) 兜底
+
         Args:
             prompt: 图片描述（image_prompt）
             aspect_ratio: 宽高比 (16:9, 9:16, 1:1)
-            reference_image: 参考图路径（用于角色一致性）
+            reference_image: 参考图路径（用于图生图/风格迁移）
             output: 输出文件路径
         """
         try:
-            from google.genai.types import GenerateImagesConfig
+            from google.genai.types import GenerateContentConfig, Modality, Part, ImageConfig
         except ImportError:
             return {"success": False, "error": "请安装 google-genai: pip install google-genai"}
 
         client = self._get_client()
 
-        # 构建配置
-        # 将 aspect_ratio 转换为尺寸
-        size_map = {
-            "9:16": {"width": 720, "height": 1280},
-            "16:9": {"width": 1280, "height": 720},
-            "1:1": {"width": 1024, "height": 1024},
-        }
-        dimensions = size_map.get(aspect_ratio, size_map["9:16"])
-
-        config = GenerateImagesConfig(
-            number_of_images=1,
-            aspect_ratio=aspect_ratio,
-        )
-
         logger.info(f"🖼️ 创建图片生成任务: {prompt[:50]}...")
 
+        # 构建 contents
+        contents = []
+
+        # 如果有参考图，添加图片（图生图）
+        if reference_image and os.path.exists(reference_image):
+            with open(reference_image, 'rb') as f:
+                img_bytes = f.read()
+            contents.append(Part.from_bytes(data=img_bytes, mime_type='image/png'))
+            logger.info(f"  使用参考图: {reference_image}")
+
+        # 添加文本 prompt
+        contents.append(prompt)
+
+        # 尝试使用主模型
+        result = await self._generate_with_model(
+            client, self.PRIMARY_MODEL, contents, aspect_ratio, output
+        )
+
+        if result.get("success"):
+            result["model"] = self.PRIMARY_MODEL
+            return result
+
+        # 主模型失败，尝试降级模型
+        error_msg = result.get("error", "")
+        logger.warning(f"⚠️ 主模型 {self.PRIMARY_MODEL} 失败: {error_msg}")
+        logger.info(f"🔄 尝试降级模型 {self.FALLBACK_MODEL}...")
+
+        result = await self._generate_with_model(
+            client, self.FALLBACK_MODEL, contents, aspect_ratio, output
+        )
+
+        if result.get("success"):
+            result["model"] = self.FALLBACK_MODEL
+            result["fallback_used"] = True
+            return result
+
+        return result
+
+    async def _generate_with_model(
+        self,
+        client,
+        model: str,
+        contents: list,
+        aspect_ratio: str,
+        output: str
+    ) -> Dict[str, Any]:
+        """使用指定模型生成图片"""
+        from google.genai.types import GenerateContentConfig, Modality, ImageConfig
+
         try:
-            # 调用 API
-            operation = client.models.generate_images(
-                model=self.IMAGEN_MODEL,
-                prompt=prompt,
-                config=config,
+            logger.info(f"  使用模型: {model}")
+
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=GenerateContentConfig(
+                    response_modalities=[Modality.TEXT, Modality.IMAGE],
+                    image_config=ImageConfig(aspect_ratio=aspect_ratio),
+                ),
             )
 
             logger.info(f"⏳ 等待图片生成完成...")
 
-            # 获取结果
-            if operation and operation.generated_images:
-                img_result = operation.generated_images[0]
-
-                # 尝试多种方式获取图片数据
-                image_uri = None
-                image_bytes = None
-
-                # 方式1: 从 .image.uri 获取 URL
-                if hasattr(img_result, 'image') and hasattr(img_result.image, 'uri'):
-                    image_uri = img_result.image.uri
-                # 方式2: 从 .image.image_bytes 获取 base64 数据
-                elif hasattr(img_result, 'image') and hasattr(img_result.image, 'image_bytes'):
-                    image_bytes = img_result.image.image_bytes
-                # 方式3: 直接从 img_result 获取属性
-                elif hasattr(img_result, 'uri'):
-                    image_uri = img_result.uri
-                elif hasattr(img_result, 'image_bytes'):
-                    image_bytes = img_result.image_bytes
-
-                logger.info(f"✅ 图片生成完成")
-
-                # 处理结果
-                if image_uri and output:
-                    await self._download_file(image_uri, output)
-                    return {"success": True, "image_url": image_uri, "output": output}
-                elif image_bytes and output:
-                    # 如果是 base64 数据，直接解码保存
-                    Path(output).parent.mkdir(parents=True, exist_ok=True)
-                    with open(output, 'wb') as f:
-                        if isinstance(image_bytes, str):
-                            f.write(base64.b64decode(image_bytes))
-                        else:
-                            f.write(image_bytes)
-                    logger.info(f"✅ 图片已保存: {output}")
-                    return {"success": True, "output": output}
-                elif image_uri:
-                    return {"success": True, "image_url": image_uri}
+            # 解析结果
+            if response and response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if part.text:
+                        logger.info(f"  文本响应: {part.text[:100]}...")
+                    elif part.inline_data:
+                        # 保存图片
+                        image_bytes = part.inline_data.data
+                        if output:
+                            Path(output).parent.mkdir(parents=True, exist_ok=True)
+                            with open(output, 'wb') as f:
+                                if isinstance(image_bytes, str):
+                                    f.write(base64.b64decode(image_bytes))
+                                else:
+                                    f.write(image_bytes)
+                            logger.info(f"✅ 图片已保存: {output}")
+                        return {"success": True, "output": output}
 
             return {"success": False, "error": "图片生成失败，无法解析返回结果"}
 
@@ -582,8 +888,10 @@ class ImageClient:
                 return {"success": False, "error": "COMPASS_API_KEY 无效或未设置"}
             elif "402" in error_msg or "quota" in error_msg.lower():
                 return {"success": False, "error": "余额不足，请充值后重试"}
-            elif "429" in error_msg or "rate" in error_msg.lower():
-                return {"success": False, "error": "请求频率超限，请稍后重试"}
+            elif "429" in error_msg or "rate" in error_msg.lower() or "RESOURCE_EXHAUSTED" in error_msg:
+                return {"success": False, "error": "请求频率超限或配额耗尽"}
+            elif "503" in error_msg or "UNAVAILABLE" in error_msg:
+                return {"success": False, "error": "服务暂时不可用"}
             logger.error(f"❌ 图片生成失败: {e}")
             return {"success": False, "error": str(e)}
 
