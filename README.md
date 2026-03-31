@@ -4,6 +4,22 @@ AI 视频剪辑工具（Veo 3.1 Fast 版本）。
 
 ## 更新日志
 
+### v1.0.2 (2026-03-31)
+
+**旁白规划功能**
+- Phase 2: 新增旁白判断逻辑，根据视频类型（纪录片/Vlog/广告片等）决定是否需要旁白
+- Phase 3: 生成分镜时同步设计 `narration_segments`（时间点 + 文案）
+- Phase 4: 新增旁白生成步骤（视频/音乐生成后按分段调用 TTS）
+- Phase 5: 新增旁白插入步骤（按 `overall_time_range` 插入到正确位置）
+
+**TTS 增强**
+- 添加 `--emotion` 参数，支持 neutral/happy/sad/gentle/serious 五种情感
+- 支持 voice_style 到 TTS 参数的自动映射（如"温柔女声" → female_gentle + gentle）
+
+**Suno API 更新**
+- 升级到 V3_5 模型
+- 更新轮询接口和响应数据结构
+
 ### v1.0.1 (2026-03-31)
 
 **图片生成模型升级**
@@ -100,6 +116,7 @@ python video_gen_tools.py music \
 python video_gen_tools.py tts \
   --text "要合成的文本" \
   --voice female_narrator \
+  --emotion gentle \
   --output audio.mp3
 
 # 视频拼接
