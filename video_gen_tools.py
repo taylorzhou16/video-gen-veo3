@@ -1319,6 +1319,21 @@ async def cmd_video(args):
     if args.storyboard:
         aspect_ratio = get_aspect_from_storyboard(args.storyboard) or aspect_ratio
 
+    # 自动选择时长
+    duration = args.duration
+    resolution = args.resolution
+
+    if duration is None:
+        # 未指定时长，自动选择
+        if resolution in ["1080p", "4k"]:
+            # 1080p/4k 必须用 8 秒
+            duration = 8
+            logger.info(f"📐 分辨率 {resolution} 自动选择时长: {duration}秒")
+        else:
+            # 720p 默认 4 秒（普通镜头，更省资源）
+            duration = 4
+            logger.info(f"📐 默认时长: {duration}秒（普通镜头）")
+
     # 图片尺寸验证与处理
     image_path = args.image
     if image_path and os.path.exists(image_path):
@@ -1329,9 +1344,9 @@ async def cmd_video(args):
     client = Veo3Client()
     result = await client.create_video(
         prompt=args.prompt,
-        duration=args.duration,
+        duration=duration,
         aspect_ratio=aspect_ratio or "9:16",
-        resolution=args.resolution,
+        resolution=resolution,
         generate_audio=args.audio,
         image_path=image_path,
         output=args.output
@@ -1464,9 +1479,9 @@ def main():
     video_parser = subparsers.add_parser("video")
     video_parser.add_argument("--image", "-i", help="输入图片路径（图生视频，作为首帧）")
     video_parser.add_argument("--prompt", "-p", required=True, help="视频描述")
-    video_parser.add_argument("--duration", "-d", type=int, default=6, choices=[4, 6, 8], help="时长(秒): 4/6/8（1080p/4k 必须用 8秒）")
+    video_parser.add_argument("--duration", "-d", type=int, default=None, choices=[4, 6, 8], help="时长(秒): 4/6/8，不指定则自动选择（1080p/4k 自动用8秒）")
     video_parser.add_argument("--aspect-ratio", "-a", default="9:16", help="宽高比")
-    video_parser.add_argument("--resolution", "-r", default="720p", choices=["720p", "1080p", "4k"], help="分辨率（默认720p，1080p/4k 必须用 8秒时长）")
+    video_parser.add_argument("--resolution", "-r", default="720p", choices=["720p", "1080p", "4k"], help="分辨率（默认720p，1080p/4k 自动使用8秒时长）")
     video_parser.add_argument("--storyboard", "-s", help="storyboard.json 路径，自动读取 aspect_ratio")
     video_parser.add_argument("--audio", action="store_true", default=True, help="生成音频（默认开启）")
     video_parser.add_argument("--output", "-o", help="输出文件路径")
