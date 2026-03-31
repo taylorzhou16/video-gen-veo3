@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (may contain API keys)
+config.json
+
+# Project outputs
+*.mp4
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+
+# Logs
+*.log

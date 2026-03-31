@@ -1,0 +1,386 @@
+# Veo 3 Prompt 编写规范
+
+## 目录
+
+- 基础概念
+- 文生视频 Prompt
+- 图生视频 Prompt
+- image_prompt（分镜图生成）
+- 两阶段流程（虚构片）
+- 一致性规范
+- 比例约束
+- 台词与音频
+- 附录：模板速查
+
+---
+
+## 基础概念
+
+### Veo 3 能力对比
+
+| 功能 | Veo 3.1 Fast | Kling-3.0 | Vidu Q3 Pro |
+|------|-------------|-----------|-------------|
+| 文生视频 | ✅ | ✅ | ✅ |
+| 图生视频 | ✅ | ✅ | ✅ |
+| 自动音频 | ✅ 原生支持 | ✅ | ✅ |
+| 参考图 (referenceImages) | ❌（仅 Veo 3.1 支持） | ❌ (仅 Omni) | ❌ |
+| 多镜头模式 (multi_shot) | ❌ 不支持 | ✅ | ❌ |
+| 首帧控制 | ✅ | ✅ | ✅ |
+| 最大时长 | 8秒 | 10秒 | 8秒 |
+| 最高分辨率 | 4k | 1080p | 720p |
+
+### 关键差异
+
+**Veo 3.1 Fast vs Kling/Vidu**：
+- Veo 3.1 Fast **不支持**参考图（referenceImages，仅 Veo 3.1 支持），角色一致性只能通过首帧控制或详细文字描述
+- Veo 3.1 Fast **不支持**多镜头模式（multi_shot），每个镜头独立生成
+- Veo 3.1 Fast 自动音频更强大，支持简单对话
+- Veo 3.1 Fast 时长限制：4/6/8秒（1080p/4k 必须用 8秒）
+- Veo 3.1 Fast 支持更高分辨率（4k）
+
+---
+
+## 文生视频 Prompt
+
+### 结构要素（按顺序）
+
+1. **整体动作概述** — 简要描述镜头整体动作
+2. **分段动作** — 按时间轴：0-2s, 2-5s...（长视频推荐）
+3. **主体描述** — 人物/物体的外观特征
+4. **场景/环境** — 地点、时间、环境细节
+5. **运镜描述** — 推/拉/摇/移/跟/升降
+6. **风格/氛围** — 电影感、光线、色调
+7. **台词信息** — 角色、内容、情绪、语速（如有）
+8. **比例保护** — "保持XX比例构图"
+
+### 基础模板
+
+```
+整体：{镜头整体动作描述}
+
+分段动作（{duration}秒）：
+{time_range_1}: {动作描述}
+{time_range_2}: {动作描述 + 台词同步}
+...
+
+运镜：{镜头运动描述}
+节奏：{运动节奏}
+画面稳定性：{保持稳定/轻微晃动}
+{台词信息}
+保持{比例}构图，不破坏画面比例
+```
+
+### 完整示例（6秒镜头，720p 默认配置）
+
+```
+整体：女主角从沉思中抬头看向窗外，嘴角逐渐上扬，露出温柔微笑。
+
+分段动作（6秒）：
+0-2s: 女主角侧脸对着镜头，目光望向窗外，表情平静
+2-4s: 女主角嘴角微微上扬，眼神变得柔和
+4-6s: 女主角完全转过身来，面向镜头自然微笑
+
+运镜：镜头缓慢推近，保持稳定
+节奏：缓慢平稳
+画面稳定性：保持稳定
+台词：女主角温柔地说："这是我最喜欢的地方。" 声音清澈，语速适中偏慢。
+保持竖屏9:16构图，人物始终位于画面中央
+```
+
+### 简洁模板（短视频）
+
+```
+[主体描述] + [动作] + [场景] + [风格] + [镜头] + [比例]
+
+示例：
+一位25岁的亚洲女性，黑色长直发，穿着米色针织衫，
+坐在温馨的咖啡馆窗边，缓缓睁开眼睛，露出温柔的微笑，
+温暖的午后阳光透过落地窗洒进来，电影感色调，浅景深，
+镜头缓慢推近，竖屏9:16构图
+```
+
+---
+
+## 图生视频 Prompt
+
+### 工作模式
+
+图生视频模式下：
+1. **图片作为首帧**：视频从这张图片开始
+2. **Prompt 描述运动**：描述图片中元素如何运动
+3. **自动继承画面**：场景、光线、构图从图片继承
+
+### Prompt 结构
+
+```
+[运动/动作描述] + [情绪/氛围] + [镜头运动] + [画面比例保护]
+```
+
+### 完整示例
+
+**输入图片**：一张女性肖像照片
+
+**video_prompt**：
+```
+图中的人物缓缓睁开眼睛，露出温柔的微笑，
+温暖的氛围，轻微的推进镜头，保持竖屏9:16构图
+```
+
+### 注意事项
+
+- Prompt 重点描述**动作**，场景从图片自动继承
+- 不要重复描述图片中已有的静态元素
+- 描述运动时保持画面的连贯性
+
+---
+
+## image_prompt（分镜图生成）
+
+用于生成分镜图作为首帧。**虚构片/短剧必须先生成分镜图**。
+
+### 五要素结构
+
+1. **场景**：时间、地点、环境
+2. **主体**：人物外貌、服饰、姿态
+3. **光影**：光线方向、色温、氛围
+4. **风格**：cinematic / realistic / anime
+5. **比例**：竖屏9:16 / 横屏16:9 / 正方形1:1
+
+### 基础模板
+
+```
+Cinematic realistic start frame.
+
+Scene: {具体场景描述}
+Location details: {环境细节}
+
+{人物外貌详细描述}，{姿态}，{表情}，{位置}
+
+Shot scale: {wide/medium/close-up}
+Camera angle: {eye-level/high/low}
+Lighting: {灯光描述}
+Color grade: {色调}
+Aspect ratio: {画面比例}
+
+Style: {cinematic realistic/film grain/etc.}
+```
+
+### 完整示例
+
+```
+Cinematic realistic start frame.
+
+Scene: A cozy coffee shop interior, afternoon sunlight streaming through large windows
+Location details: wooden tables, warm lighting, coffee cups, soft background blur
+
+A 25-year-old Asian woman with long black hair, wearing a beige knit sweater,
+sitting by the window, hands wrapped around a coffee cup, gentle smile
+
+Shot scale: Medium shot
+Camera angle: Eye-level, slightly from the side
+Lighting: Warm natural light from window, soft shadows
+Color grade: Warm golden tones
+
+Style: Cinematic realistic, film grain, shallow depth of field, 9:16 aspect ratio
+```
+
+---
+
+## 两阶段流程（虚构片）
+
+**虚构片/短剧、MV短片必须走两阶段流程**：
+
+```
+阶段1: Image Prompt → 生成分镜图（控制场景/画风/灯光/氛围/色彩/妆造）
+         ↓
+阶段2: 分镜图作为首帧 → img2video（Veo 3）
+```
+
+### Step 1: 生成分镜图
+
+使用 image_prompt 生成分镜图：
+
+```bash
+python video_gen_tools.py image \
+  --prompt "Cinematic realistic start frame.
+Scene: 温馨咖啡馆内部...
+A 25-year-old Asian woman with long black hair...
+Style: Cinematic realistic, 9:16 aspect ratio" \
+  --aspect-ratio 9:16 \
+  --output generated/frames/scene1_shot1_frame.png
+```
+
+### Step 2: 分镜图作为首帧生成视频
+
+```bash
+python video_gen_tools.py video \
+  --image generated/frames/scene1_shot1_frame.png \
+  --prompt "图中人物缓缓睁开眼睛，露出温柔微笑。保持竖屏9:16构图。" \
+  --duration 5 \
+  --resolution 1080p \
+  --aspect-ratio 9:16 \
+  --audio \
+  --output generated/videos/scene1_shot1.mp4
+```
+
+### 跨镜头角色一致性
+
+由于 Veo 3 不支持多参考图，跨镜头一致性需要通过：
+
+1. **角色参考图**：用于生成分镜图时保持人物外貌一致
+2. **详细的文字描述**：每个 image_prompt 使用相同的人物描述
+3. **分镜图首帧**：确保场景和人物姿态一致
+
+**角色一致性模板**：
+
+在每个包含人物的分镜图 image_prompt 中，保持以下描述一致：
+
+```
+人物标识：{名字}
+外貌特征：{性别}，{年龄}，{发型}，{面部特征}，{体型}
+服饰描述：{款式}，{颜色}，{材质}，{配饰}
+标志性特征：{特殊标记、习惯动作等}
+```
+
+**示例**：
+```
+小美，25岁亚洲女性，黑色长直发及腰，瓜子脸，大眼睛，
+穿着白色衬衫和牛仔裤，戴着细银项链，
+习惯性将头发别到耳后
+```
+
+---
+
+## 一致性规范
+
+### 单一镜头内的一致性
+
+- 保持主体特征描述一致
+- 保持场景描述一致
+- 保持风格描述一致
+
+### 跨镜头的一致性（Veo 3 限制）
+
+Veo 3 不支持多参考图，跨镜头一致性需要通过：
+
+1. **分镜图首帧**：先生成分镜图，再作为首帧生成视频
+2. **详细的文字描述**：每个镜头使用相同的人物描述
+3. **角色参考图**：用于生成分镜图时保持人物外貌
+
+---
+
+## 比例约束
+
+### 画面比例
+
+| 比例 | 适用平台 | 描述方式 |
+|------|---------|---------|
+| 9:16 | 抖音/小红书 | "竖屏构图，9:16画面比例，人物/主体位于画面中央" |
+| 16:9 | B站/YouTube | "横屏构图，16:9画面比例" |
+| 1:1 | Instagram | "正方形构图，1:1画面比例，主体居中" |
+
+### CLI 参数
+
+```bash
+# 通过 --aspect-ratio 参数传递
+python video_gen_tools.py video --prompt "..." --aspect-ratio 9:16
+```
+
+**重要**：`aspect_ratio` 从 `storyboard.json` 读取，所有视频生成必须传递此参数。
+
+---
+
+## 台词与音频
+
+### Veo 3 自动音频
+
+Veo 3 自动生成以下音频：
+- **环境音**：风声、雨声、街道噪音、咖啡馆背景音等
+- **音效**：脚步声、开门声、物品碰撞等
+- **简单对话**：基本的语音内容
+
+### 台词融入 Prompt
+
+当镜头包含台词时，**必须在 video_prompt 中完整描述**：角色（含外貌）、台词内容（引号包裹）、表情/情绪、声音特质和语速。
+
+```
+女主角（25岁亚洲女性，黑色长直发）抬头看向服务生，
+温柔微笑着说："这里真的很安静，我很喜欢。"
+声音清脆悦耳，语速适中偏慢。
+```
+
+### audio 字段与 API 映射
+
+| storyboard 字段 | API 参数 | 说明 |
+|----------------|----------|------|
+| `audio.enabled = true` | `--audio` | 生成环境音/台词 |
+| `audio.enabled = false` | 无 `--audio` | 静音输出 |
+
+### BGM 约束
+
+BGM 由后期合成（Suno 生成或用户提供），不在视频生成阶段处理。
+
+---
+
+## 附录：模板速查
+
+### 文生视频模板（完整版）
+
+```
+整体：{镜头整体动作描述}
+
+分段动作（{duration}秒）：
+{time_range_1}: {动作描述}
+{time_range_2}: {动作描述 + 台词同步}
+
+运镜：{镜头运动描述}
+节奏：{运动节奏}
+画面稳定性：{保持稳定/轻微晃动}
+{台词信息}
+保持{比例}构图，不破坏画面比例
+```
+
+### 文生视频模板（简洁版）
+
+```
+[主体] + [动作] + [场景] + [风格] + [镜头] + [比例]
+```
+
+### 图生视频模板
+
+```
+[动作] + [氛围] + [镜头] + [比例保护]
+
+示例：
+图中人物缓缓睁开眼睛，露出温柔微笑，
+温暖氛围，轻微推进，保持竖屏9:16构图
+```
+
+### image_prompt 模板（分镜图）
+
+```
+Cinematic realistic start frame.
+
+Scene: {场景描述}
+Location details: {环境细节}
+
+{人物外貌描述}，{姿态}，{表情}，{位置}
+
+Shot scale: {wide/medium/close-up}
+Camera angle: {eye-level/high/low}
+Lighting: {灯光描述}
+Color grade: {色调}
+Aspect ratio: {画面比例}
+
+Style: Cinematic realistic, film grain, shallow depth of field
+```
+
+### 两阶段流程示例
+
+```
+# Step 1: 生成分镜图
+image_prompt = "Cinematic start frame. 25岁亚洲女性..."
+
+# Step 2: 分镜图作为首帧
+video_prompt = "图中人物缓缓睁开眼睛..."
+```
