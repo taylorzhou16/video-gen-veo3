@@ -915,19 +915,19 @@ class SunoClient:
 
     def __init__(self):
         import httpx
-        self.client = httpx.AsyncClient(
-            timeout=httpx.Timeout(120.0, connect=10.0),
-            headers={"Content-Type": "application/json"}
-        )
+        self.client = httpx.AsyncClient(timeout=120.0)
 
     async def generate(self, prompt: str, style: str, instrumental: bool = True, output: str = None) -> Dict[str, Any]:
         payload = {
             "prompt": prompt,
-            "style": style,
             "instrumental": instrumental,
+            "model": "V3_5",
+            "customMode": True,
+            "style": style,
+            "callbackUrl": "https://example.com/callback"
         }
 
-        logger.info(f"🎵 创建音乐生成任务: {prompt[:30]}...")
+        logger.info(f"🎵 创建音乐生成任务: {prompt[:50]}...")
 
         try:
             response = await self.client.post(
@@ -938,20 +938,19 @@ class SunoClient:
             response.raise_for_status()
             result = response.json()
 
-            task_id = result.get("task_id") or result.get("id")
-            if task_id:
-                audio_url = await self._wait_for_completion(task_id)
-                if audio_url and output:
-                    await self._download_file(audio_url, output)
-                    return {"success": True, "audio_url": audio_url, "output": output}
-                return {"success": True, "audio_url": audio_url}
+            if result.get("code") != 200:
+                return {"success": False, "error": result.get("msg", "Unknown error")}
 
-            audio_url = result.get("audio_url") or result.get("url")
+            task_id = result["data"]["taskId"]
+            logger.info(f"✅ 任务已创建: {task_id}")
+
+            audio_url = await self._wait_for_completion(task_id)
+
             if audio_url and output:
                 await self._download_file(audio_url, output)
                 return {"success": True, "audio_url": audio_url, "output": output}
 
-            return {"success": True, "result": result}
+            return {"success": True, "audio_url": audio_url, "task_id": task_id}
 
         except Exception as e:
             logger.error(f"❌ Suno 音乐生成失败: {e}")
@@ -960,26 +959,45 @@ class SunoClient:
     async def _wait_for_completion(self, task_id: str, max_wait: int = 300) -> Optional[str]:
         start_time = time.monotonic()
 
+        logger.info(f"⏳ 等待音乐生成...")
+
         while True:
             elapsed = time.monotonic() - start_time
             if elapsed > max_wait:
+                logger.error(f"❌ 任务超时 ({max_wait}秒)")
                 return None
 
             try:
                 response = await self.client.get(
-                    f"{Config.SUNO_API_URL}/task/{task_id}",
+                    f"{Config.SUNO_API_URL}/generate/record-info?taskId={task_id}",
                     headers={"Authorization": f"Bearer {Config.SUNO_API_KEY}"}
                 )
+                response.raise_for_status()
                 result = response.json()
-                state = result.get("state") or result.get("status")
 
-                if state in ["completed", "success"]:
-                    return result.get("audio_url") or result.get("url")
-                elif state in ["failed", "error"]:
+                if result.get("code") != 200:
+                    logger.warning(f"⚠️ 查询失败: {result.get('msg')}")
+                    await asyncio.sleep(5)
+                    continue
+
+                data = result.get("data", {})
+                status = data.get("status")
+
+                if status == "SUCCESS":
+                    tracks = data.get("response", {}).get("sunoData", [])
+                    if tracks:
+                        audio_url = tracks[0].get("audioUrl")
+                        logger.info(f"✅ 音乐生成完成 (耗时: {int(elapsed)}秒)")
+                        return audio_url
+
+                elif status == "FAILED":
+                    logger.error("❌ 音乐生成失败")
                     return None
 
                 await asyncio.sleep(5)
-            except:
+
+            except Exception as e:
+                logger.warning(f"⚠️ 查询异常: {e}")
                 await asyncio.sleep(5)
 
     async def _download_file(self, url: str, output_path: str):
