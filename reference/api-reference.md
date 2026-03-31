@@ -1,5 +1,7 @@
 # API 工具参考（Veo 3）
 
+**重要**：所有 `--prompt` 参数必须使用英文编写，以获得最佳生成效果。
+
 ## video_gen_tools.py - API 工具
 
 ```bash
@@ -8,18 +10,18 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py check
 
 # 文生视频
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
-  --prompt "一只猫在阳光下打盹" \
-  --duration 5 \
+  --prompt "A cat napping in the sunlight" \
+  --duration 6 \
   --aspect-ratio 9:16 \
-  --resolution 1080p \
+  --resolution 720p \
   --audio \
   --output output.mp4
 
 # 图生视频（图片作为首帧）
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image input.jpg \
-  --prompt "图中的人物开始微笑" \
-  --duration 5 \
+  --prompt "The person in the image starts to smile" \
+  --duration 8 \
   --aspect-ratio 9:16 \
   --resolution 1080p \
   --audio \
@@ -27,20 +29,20 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
 
 # 从 storyboard.json 读取比例
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
-  --prompt "视频描述" \
+  --prompt "A woman sitting by a coffee shop window with a gentle smile" \
   --storyboard storyboard/storyboard.json \
   --audio \
   --output output.mp4
 
 # 图片生成（分镜图）
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py image \
-  --prompt "Cinematic start frame. 一位女性坐在咖啡馆窗边，温暖光线，电影感，9:16画面比例" \
+  --prompt "Cinematic start frame. A woman sitting by a coffee shop window, warm lighting, cinematic look, 9:16 aspect ratio" \
   --aspect-ratio 9:16 \
   --output image.png
 
 # 音乐生成
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py music \
-  --prompt "轻松愉悦的背景音乐" \
+  --prompt "Relaxing and pleasant background music" \
   --style "acoustic pop" \
   --output music.mp3
 
@@ -158,15 +160,15 @@ API Key 配置在 `~/.claude/skills/video-gen-veo3/config.json`：
 ```bash
 # Step 1: 生成分镜图
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py image \
-  --prompt "Cinematic realistic start frame. 25岁亚洲女性，黑色长直发，坐在咖啡馆窗边，温暖光线，电影感，9:16画面比例" \
+  --prompt "Cinematic realistic start frame. A 25-year-old Asian woman with long black hair, sitting by a coffee shop window, warm lighting, cinematic look, 9:16 aspect ratio" \
   --aspect-ratio 9:16 \
   --output generated/frames/scene1_shot1_frame.png
 
 # Step 2: 分镜图作为首帧生成视频
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image generated/frames/scene1_shot1_frame.png \
-  --prompt "图中人物缓缓睁开眼睛，露出温柔微笑。保持竖屏9:16构图。" \
-  --duration 5 \
+  --prompt "The woman in the image slowly opens her eyes with a gentle smile. Keep 9:16 vertical composition." \
+  --duration 8 \
   --resolution 1080p \
   --aspect-ratio 9:16 \
   --audio \

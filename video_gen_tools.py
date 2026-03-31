@@ -383,6 +383,15 @@ class Veo3Client:
 
         logger.info(f"   操作完成，解析结果...")
 
+        # 检查是否有错误
+        if operation.error:
+            error_msg = operation.error.get('message', str(operation.error))
+            logger.error(f"❌ 视频生成失败: {error_msg}")
+            return {"success": False, "error": error_msg, "video_url": None}
+
+        # 打印 operation 的原始信息
+        logger.info(f"   operation.done: {operation.done}")
+
         # 尝试多种方式获取视频 URL
         video_uri = None
 

@@ -362,12 +362,14 @@ storyboard["elements"] = {"characters": characters}
 
 ### Veo 3 生成模式
 
+**重要**：所有 `--prompt` 必须使用英文编写，以获得最佳效果。
+
 **文生视频（纯创意，无素材）**：
 ```bash
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
-  --prompt "视频描述" \
-  --duration 5 \
-  --resolution 1080p \
+  --prompt "A woman sitting by a coffee shop window with a gentle smile" \
+  --duration 6 \
+  --resolution 720p \
   --aspect-ratio {aspect_ratio} \
   --audio \
   --output generated/videos/scene1_shot1.mp4
@@ -377,8 +379,8 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
 ```bash
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image <图片路径> \
-  --prompt "视频描述" \
-  --duration 5 \
+  --prompt "The person in the image starts to smile gently" \
+  --duration 8 \
   --resolution 1080p \
   --aspect-ratio {aspect_ratio} \
   --audio \
@@ -445,15 +447,17 @@ python ~/.claude/skills/video-gen-veo3/video_gen_editor.py concat \
 
 ## 工具调用速查
 
+**重要**：所有 `--prompt` 必须使用英文编写。
+
 ```bash
 # 环境检查
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py check
 
 # 文生视频（从 storyboard.json 读取 aspect_ratio）
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
-  --prompt <描述> \
-  --duration 5 \
-  --resolution 1080p \
+  --prompt "A woman sitting by a coffee shop window with a gentle smile" \
+  --duration 6 \
+  --resolution 720p \
   --storyboard storyboard/storyboard.json \
   --audio \
   --output <输出>
@@ -461,8 +465,8 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
 # 图生视频
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image <图片路径> \
-  --prompt <描述> \
-  --duration 5 \
+  --prompt "The person in the image starts to smile gently" \
+  --duration 8 \
   --resolution 1080p \
   --storyboard storyboard/storyboard.json \
   --audio \
@@ -470,7 +474,7 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
 
 # 图片生成（分镜图，从 storyboard.json 读取 aspect_ratio）
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py image \
-  --prompt <描述> \
+  --prompt "Cinematic start frame. A woman sitting by a window, warm lighting, cinematic look, 9:16 aspect ratio" \
   --storyboard storyboard/storyboard.json \
   --output <输出>
 

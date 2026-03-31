@@ -187,12 +187,14 @@
 
 ## 台词融入 video_prompt
 
-当镜头包含台词时，**必须在 video_prompt 中完整描述**：角色（含外貌）、台词内容（引号包裹）、表情/情绪、声音特质和语速。
+当镜头包含台词时，**必须在 video_prompt 中完整描述**：角色（含外貌）、台词内容（引号包裹，**保持角色原语言**）、表情/情绪、声音特质和语速。
+
+**Prompt 用英文编写，台词保持角色语言**：
 
 ```json
 {
   "shot_id": "scene1_shot5",
-  "video_prompt": "小美（25岁亚洲女性，黑色长直发）抬头看向服务生，温柔微笑着说：'这里真的很安静，我很喜欢。' 声音清脆悦耳，语速适中偏慢。保持竖屏9:16构图。",
+  "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) looks up at the server, smiling gently and says, '这里真的很安静，我很喜欢。' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
   "dialogue": {
     "speaker": "小美",
     "content": "这里真的很安静，我很喜欢。",
@@ -230,7 +232,7 @@ BGM 由后期合成，不在视频生成阶段处理：
   "project_type": "虚构片/短剧",
   "target_duration": 30,
   "aspect_ratio": "9:16",
-  "resolution": "1080p",
+  "resolution": "720p",
   "elements": {
     "characters": [
       {
@@ -253,12 +255,12 @@ BGM 由后期合成，不在视频生成阶段处理：
       "shots": [
         {
           "shot_id": "scene1_shot1",
-          "duration": 5,
+          "duration": 6,
           "shot_type": "establishing",
           "description": "咖啡馆全景",
           "generation_mode": "img2video",
-          "video_prompt": "温馨的城市咖啡馆内部全景，午后阳光透过落地窗洒进来，镜头缓慢推近。保持竖屏9:16构图。",
-          "image_prompt": "Cinematic realistic start frame. 温馨的城市咖啡馆内部全景，午后阳光透过落地窗洒进来，浅景深，电影感，9:16画面比例",
+          "video_prompt": "Interior of a cozy city coffee shop, afternoon sunlight streaming through large floor-to-ceiling windows, slow push in. Keep 9:16 vertical composition.",
+          "image_prompt": "Cinematic realistic start frame. Interior of a cozy city coffee shop, afternoon sunlight streaming through large windows, shallow depth of field, cinematic look, 9:16 aspect ratio",
           "frame_path": "generated/frames/scene1_shot1_frame.png",
           "dialogue": null,
           "transition": "fade_in",
@@ -270,12 +272,12 @@ BGM 由后期合成，不在视频生成阶段处理：
         },
         {
           "shot_id": "scene1_shot2",
-          "duration": 5,
+          "duration": 6,
           "shot_type": "closeup",
           "description": "女主角特写",
           "generation_mode": "img2video",
-          "video_prompt": "小美（25岁亚洲女性，黑色长直发）坐在咖啡馆窗边，温柔微笑着说：'这里真的很安静，我很喜欢。' 声音清脆悦耳，语速适中。保持竖屏9:16构图。",
-          "image_prompt": "Cinematic realistic start frame. 25岁亚洲女性，黑色长直发，穿着白色衬衫，坐在咖啡馆窗边，温柔微笑，温暖光线，电影感，9:16画面比例",
+          "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) sits by the coffee shop window, smiling gently and says, '这里真的很安静，我很喜欢。' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
+          "image_prompt": "Cinematic realistic start frame. A 25-year-old Asian woman with long black hair, wearing a white shirt, sitting by the coffee shop window with a gentle smile, warm lighting, cinematic look, 9:16 aspect ratio",
           "frame_path": "generated/frames/scene1_shot2_frame.png",
           "dialogue": {
             "speaker": "小美",
