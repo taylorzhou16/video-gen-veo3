@@ -71,6 +71,7 @@ The female lead (a 25-year-old Asian woman with long black hair) looks up with a
 6. **Style/Atmosphere** — Cinematic, lighting, color tone
 7. **Dialogue Information** — Character, content, emotion, speaking rate (if any)
 8. **Aspect Ratio Protection** — "Keep XX aspect ratio composition"
+9. **BGM Constraint** — Add "No background music. Natural ambient sound only." if `audio.no_bgm = true`
 
 ### Basic Template
 
@@ -87,6 +88,7 @@ Rhythm: {Movement rhythm}
 Stability: {Keep stable/Slight shake}
 {Dialogue information}
 Keep {aspect ratio} composition, maintain aspect ratio
+{BGM constraint}
 ```
 
 ### Complete Example (6-second shot, 720p default configuration)
@@ -104,18 +106,19 @@ Rhythm: Slow and smooth
 Stability: Stable
 Dialogue: The woman says gently, "This is my favorite place." Clear voice, moderate pace.
 Keep 9:16 vertical composition, subject centered in frame
+No background music. Natural ambient sound only.
 ```
 
 ### Concise Template (Short Video)
 
 ```
-[Subject] + [Action] + [Scene] + [Style] + [Camera] + [Aspect Ratio]
+[Subject] + [Action] + [Scene] + [Style] + [Camera] + [Aspect Ratio] + [BGM Constraint]
 
 Example:
 A 25-year-old Asian woman with long black hair, wearing a beige knit sweater,
 sitting by the window in a cozy coffee shop, slowly opening her eyes with a gentle smile,
 warm afternoon sunlight streaming through the large windows, cinematic color grading, shallow depth of field,
-slow push in, 9:16 vertical composition
+slow push in, 9:16 vertical composition, no background music, natural ambient sound only
 ```
 
 ---
@@ -132,7 +135,7 @@ In image-to-video mode:
 ### Prompt Structure
 
 ```
-[Motion/Action] + [Mood/Atmosphere] + [Camera Movement] + [Aspect Ratio Protection]
+[Motion/Action] + [Mood/Atmosphere] + [Camera Movement] + [Aspect Ratio Protection] + [BGM Constraint]
 ```
 
 ### Complete Example
@@ -142,7 +145,8 @@ In image-to-video mode:
 **video_prompt**:
 ```
 The woman in the image slowly opens her eyes, revealing a gentle smile,
-warm atmosphere, slight push in, keep 9:16 vertical composition
+warm atmosphere, slight push in, keep 9:16 vertical composition.
+No background music. Natural ambient sound only.
 ```
 
 ### Notes
@@ -336,10 +340,24 @@ Clear, pleasant voice, moderate pace.
 |-----------------|---------------|-------------|
 | `audio.enabled = true` | `--audio` | Generate ambient sound/dialogue |
 | `audio.enabled = false` | No `--audio` | Silent output |
+| `audio.no_bgm = true` | Add constraint to prompt | Add "No background music. Natural ambient sound only." |
+| `audio.no_bgm = false` | No constraint | Video model decides freely |
 
 ### BGM Constraints
 
-BGM is mixed in post-production (Suno generated or user provided), not handled during video generation stage.
+BGM is mixed in post-production (Suno generated or user provided), not generated during video generation.
+
+**When `audio.no_bgm = true`, must add the following at the end of video_prompt**:
+```
+No background music. Natural ambient sound only.
+```
+
+**Decision Logic (based on `creative.json`'s `bgm.type`)**:
+- `bgm.type = "ai_generated"` → All shots `no_bgm = true` (BGM by Suno, mixed in post)
+- `bgm.type = "user_provided"` → All shots `no_bgm = true` (BGM by user, mixed in post)
+- `bgm.type = "none"` → All shots `no_bgm = false` (video model decides)
+
+**Note**: Do not separately write Sound effects, let the model automatically generate ambient sounds based on the scene (e.g., car engine sounds, keyboard typing, wind, etc.).
 
 ---
 

@@ -1391,9 +1391,16 @@ async def cmd_video(args):
         if result["success"] and result["resized"]:
             image_path = result["output_path"]
 
+    # Process BGM constraint
+    prompt = args.prompt
+    if args.no_bgm:
+        bgm_constraint = "No background music. Natural ambient sound only."
+        if bgm_constraint.lower() not in prompt.lower():
+            prompt = f"{prompt} {bgm_constraint}"
+
     client = Veo3Client()
     result = await client.create_video(
-        prompt=args.prompt,
+        prompt=prompt,
         duration=duration,
         aspect_ratio=aspect_ratio or "9:16",
         resolution=resolution,
@@ -1534,6 +1541,8 @@ def main():
     video_parser.add_argument("--resolution", "-r", default="720p", choices=["720p", "1080p", "4k"], help="Resolution (default 720p, 1080p/4k auto uses 8 second duration)")
     video_parser.add_argument("--storyboard", "-s", help="storyboard.json path, automatically reads aspect_ratio")
     video_parser.add_argument("--audio", action="store_true", default=True, help="Generate audio (default enabled)")
+    video_parser.add_argument("--no-audio", action="store_false", dest="audio", help="Disable audio generation")
+    video_parser.add_argument("--no-bgm", action="store_true", default=True, help="Add 'No background music' constraint to prompt (default enabled)")
     video_parser.add_argument("--output", "-o", help="Output file path")
 
     music_parser = subparsers.add_parser("music")
