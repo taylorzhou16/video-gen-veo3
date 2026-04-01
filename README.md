@@ -4,6 +4,24 @@ AI Video Editing Tool (Veo 3.1 Fast version).
 
 ## Changelog
 
+### v1.0.4 (2026-04-01)
+
+**BGM Constraint Mechanism**
+- Added `no_bgm` field to storyboard `audio` configuration
+- Video prompts now include "No background music. Natural ambient sound only." constraint by default
+- Ensures video generation only produces ambient sounds and sync dialogue
+- BGM is added separately in post-production (Suno generated or user provided)
+
+**CLI Improvements**
+- Fixed `--audio` argument bug (previously couldn't disable audio)
+- Added `--no-audio` flag to disable audio generation
+- Added `--no-bgm` flag to control BGM constraint (default enabled)
+
+**Documentation Updates**
+- Updated storyboard-spec.md with `no_bgm` field and BGM decision logic
+- Updated prompt-guide.md with BGM constraint in templates and examples
+- Updated SKILL.md Phase 2/3 with BGM processing logic
+
 ### v1.0.3 (2026-04-01)
 
 **Full English Localization**
