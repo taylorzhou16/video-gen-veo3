@@ -1,95 +1,95 @@
-# Veo 3 Prompt 编写规范
+# Veo 3 Prompt Writing Guidelines
 
-## 目录
+## Table of Contents
 
-- **重要规则**
-- 基础概念
-- 文生视频 Prompt
-- 图生视频 Prompt
-- image_prompt（分镜图生成）
-- 两阶段流程（虚构片）
-- 一致性规范
-- 比例约束
-- 台词与音频
-- 附录：模板速查
-
----
-
-## 重要规则
-
-**所有 video_prompt 和 image_prompt 必须使用英文编写。**
-
-Veo 3.1 Fast 对英文 prompt 的理解更准确，能生成更高质量的结果。
-
-**但台词内容保持角色原本的语言（不能 OOC）**：
-- 中文角色说中文台词
-- 英文角色说英文台词
-- 台词内容嵌入英文 prompt 中
-
-**示例**：
-```
-The female lead (a 25-year-old Asian woman with long black hair) looks up with a gentle smile and says, "这里真的很安静，我很喜欢。" Clear voice, moderate pace.
-```
+- **Important Rules**
+- Basic Concepts
+- Text-to-video Prompt
+- Image-to-video Prompt
+- image_prompt (Storyboard Image Generation)
+- Two-stage Process (Fiction)
+- Consistency Standards
+- Aspect Ratio Constraints
+- Dialogue and Audio
+- Appendix: Quick Templates
 
 ---
 
-## 基础概念
+## Important Rules
 
-### Veo 3 能力对比
+**All video_prompt and image_prompt must be written in English.**
 
-| 功能 | Veo 3.1 Fast | Kling-3.0 | Vidu Q3 Pro |
-|------|-------------|-----------|-------------|
-| 文生视频 | ✅ | ✅ | ✅ |
-| 图生视频 | ✅ | ✅ | ✅ |
-| 自动音频 | ✅ 原生支持 | ✅ | ✅ |
-| 参考图 (referenceImages) | ❌（仅 Veo 3.1 支持） | ❌ (仅 Omni) | ❌ |
-| 多镜头模式 (multi_shot) | ❌ 不支持 | ✅ | ❌ |
-| 首帧控制 | ✅ | ✅ | ✅ |
-| 最大时长 | 8秒 | 10秒 | 8秒 |
-| 最高分辨率 | 4k | 1080p | 720p |
+Veo 3.1 Fast understands English prompts more accurately and produces higher quality results.
 
-### 关键差异
+**But dialogue content should match the character's language context**:
+- For English-speaking characters: use English dialogue
+- For non-English contexts: dialogue can be in the appropriate language, but the prompt wrapper should still be in English
+- Example for multilingual scenarios: The character says, "[dialogue in character's language]"
 
-**Veo 3.1 Fast vs Kling/Vidu**：
-- Veo 3.1 Fast **不支持**参考图（referenceImages，仅 Veo 3.1 支持），角色一致性只能通过首帧控制或详细文字描述
-- Veo 3.1 Fast **不支持**多镜头模式（multi_shot），每个镜头独立生成
-- Veo 3.1 Fast 自动音频更强大，支持简单对话
-- Veo 3.1 Fast 时长限制：4/6/8秒（1080p/4k 必须用 8秒）
-- Veo 3.1 Fast 支持更高分辨率（4k）
+**Example**:
+```
+The female lead (a 25-year-old Asian woman with long black hair) looks up with a gentle smile and says, "It's really quiet here, I like it." Clear voice, moderate pace.
+```
 
 ---
 
-## 文生视频 Prompt
+## Basic Concepts
 
-### 结构要素（按顺序）
+### Veo 3 Capabilities Comparison
 
-1. **整体动作概述** — 简要描述镜头整体动作
-2. **分段动作** — 按时间轴：0-2s, 2-5s...（长视频推荐）
-3. **主体描述** — 人物/物体的外观特征
-4. **场景/环境** — 地点、时间、环境细节
-5. **运镜描述** — 推/拉/摇/移/跟/升降
-6. **风格/氛围** — 电影感、光线、色调
-7. **台词信息** — 角色、内容、情绪、语速（如有）
-8. **比例保护** — "保持XX比例构图"
+| Feature | Veo 3.1 Fast | Kling-3.0 | Vidu Q3 Pro |
+|---------|--------------|-----------|-------------|
+| Text-to-video | ✅ | ✅ | ✅ |
+| Image-to-video | ✅ | ✅ | ✅ |
+| Automatic Audio | ✅ Native support | ✅ | ✅ |
+| Reference Images (referenceImages) | ❌ (Only Veo 3.1 supports) | ❌ (Only Omni) | ❌ |
+| Multi-shot mode (multi_shot) | ❌ Not supported | ✅ | ❌ |
+| First Frame Control | ✅ | ✅ | ✅ |
+| Max Duration | 8s | 10s | 8s |
+| Max Resolution | 4k | 1080p | 720p |
 
-### 基础模板
+### Key Differences
+
+**Veo 3.1 Fast vs Kling/Vidu**:
+- Veo 3.1 Fast **does not support** reference images (referenceImages, only Veo 3.1 supports), character consistency only through first frame control or detailed text description
+- Veo 3.1 Fast **does not support** multi-shot mode (multi_shot), each shot generated independently
+- Veo 3.1 Fast has more powerful automatic audio, supports simple dialogue
+- Veo 3.1 Fast duration limit: 4/6/8s (1080p/4k must use 8s)
+- Veo 3.1 Fast supports higher resolution (4k)
+
+---
+
+## Text-to-video Prompt
+
+### Structure Elements (in order)
+
+1. **Overall Action Summary** — Briefly describe overall shot action
+2. **Segmented Actions** — By timeline: 0-2s, 2-5s... (recommended for longer videos)
+3. **Subject Description** — Character/object appearance features
+4. **Scene/Environment** — Location, time, environment details
+5. **Camera Movement** — Push/pull/pan/tilt/track/crane
+6. **Style/Atmosphere** — Cinematic, lighting, color tone
+7. **Dialogue Information** — Character, content, emotion, speaking rate (if any)
+8. **Aspect Ratio Protection** — "Keep XX aspect ratio composition"
+
+### Basic Template
 
 ```
-整体：{镜头整体动作描述}
+Overall: {Shot overall action description}
 
-分段动作（{duration}秒）：
-{time_range_1}: {动作描述}
-{time_range_2}: {动作描述 + 台词同步}
+Segmented actions ({duration}s):
+{time_range_1}: {Action description}
+{time_range_2}: {Action description + dialogue sync}
 ...
 
-运镜：{镜头运动描述}
-节奏：{运动节奏}
-画面稳定性：{保持稳定/轻微晃动}
-{台词信息}
-保持{比例}构图，不破坏画面比例
+Camera: {Camera movement description}
+Rhythm: {Movement rhythm}
+Stability: {Keep stable/Slight shake}
+{Dialogue information}
+Keep {aspect ratio} composition, maintain aspect ratio
 ```
 
-### 完整示例（6秒镜头，720p 默认配置）
+### Complete Example (6-second shot, 720p default configuration)
 
 ```
 Overall: A woman looks up from her contemplation toward the window, a gentle smile gradually appearing on her face.
@@ -102,11 +102,11 @@ Segmented actions (6 seconds):
 Camera: Slow push in, steady
 Rhythm: Slow and smooth
 Stability: Stable
-Dialogue: The woman says gently, "这是我最喜欢的地方。" Clear voice, moderate pace.
+Dialogue: The woman says gently, "This is my favorite place." Clear voice, moderate pace.
 Keep 9:16 vertical composition, subject centered in frame
 ```
 
-### 简洁模板（短视频）
+### Concise Template (Short Video)
 
 ```
 [Subject] + [Action] + [Scene] + [Style] + [Camera] + [Aspect Ratio]
@@ -120,71 +120,71 @@ slow push in, 9:16 vertical composition
 
 ---
 
-## 图生视频 Prompt
+## Image-to-video Prompt
 
-### 工作模式
+### Working Mode
 
-图生视频模式下：
-1. **图片作为首帧**：视频从这张图片开始
-2. **Prompt 描述运动**：描述图片中元素如何运动
-3. **自动继承画面**：场景、光线、构图从图片继承
+In image-to-video mode:
+1. **Image as first frame**: Video starts from this image
+2. **Prompt describes motion**: Describes how elements in the image move
+3. **Automatically inherits visuals**: Scene, lighting, composition inherited from image
 
-### Prompt 结构
+### Prompt Structure
 
 ```
 [Motion/Action] + [Mood/Atmosphere] + [Camera Movement] + [Aspect Ratio Protection]
 ```
 
-### 完整示例
+### Complete Example
 
-**输入图片**：一张女性肖像照片
+**Input Image**: A female portrait photo
 
-**video_prompt**：
+**video_prompt**:
 ```
 The woman in the image slowly opens her eyes, revealing a gentle smile,
 warm atmosphere, slight push in, keep 9:16 vertical composition
 ```
 
-### 注意事项
+### Notes
 
-- Prompt 重点描述**动作**，场景从图片自动继承
-- 不要重复描述图片中已有的静态元素
-- 描述运动时保持画面的连贯性
+- Prompt focuses on describing **action**, scene automatically inherited from image
+- Don't repeat description of static elements already in the image
+- Maintain visual coherence when describing motion
 
 ---
 
-## image_prompt（分镜图生成）
+## image_prompt (Storyboard Image Generation)
 
-用于生成分镜图作为首帧。**虚构片/短剧必须先生成分镜图**。
+Used to generate storyboard images as first frames. **Fiction/Short Drama must generate storyboard images first**.
 
-### 五要素结构
+### Five-element Structure
 
-1. **场景**：时间、地点、环境
-2. **主体**：人物外貌、服饰、姿态
-3. **光影**：光线方向、色温、氛围
-4. **风格**：cinematic / realistic / anime
-5. **比例**：竖屏9:16 / 横屏16:9 / 正方形1:1
+1. **Scene**: Time, location, environment
+2. **Subject**: Character appearance, clothing, posture
+3. **Lighting**: Light direction, color temperature, atmosphere
+4. **Style**: cinematic / realistic / anime
+5. **Ratio**: Vertical 9:16 / Horizontal 16:9 / Square 1:1
 
-### 基础模板
+### Basic Template
 
 ```
 Cinematic realistic start frame.
 
-Scene: {具体场景描述}
-Location details: {环境细节}
+Scene: {Specific scene description}
+Location details: {Environment details}
 
-{人物外貌详细描述}，{姿态}，{表情}，{位置}
+{Character appearance detailed description}, {posture}, {expression}, {position}
 
 Shot scale: {wide/medium/close-up}
 Camera angle: {eye-level/high/low}
-Lighting: {灯光描述}
-Color grade: {色调}
-Aspect ratio: {画面比例}
+Lighting: {Lighting description}
+Color grade: {Color tone}
+Aspect ratio: {Aspect ratio}
 
 Style: {cinematic realistic/film grain/etc.}
 ```
 
-### 完整示例
+### Complete Example
 
 ```
 Cinematic realistic start frame.
@@ -205,36 +205,36 @@ Style: Cinematic realistic, film grain, shallow depth of field, 9:16 aspect rati
 
 ---
 
-## 两阶段流程（虚构片）
+## Two-stage Process (Fiction)
 
-**虚构片/短剧、MV短片必须走两阶段流程**：
+**Fiction/Short Drama, MV Short Films must follow two-stage process**:
 
 ```
-阶段1: Image Prompt → 生成分镜图（控制场景/画风/灯光/氛围/色彩/妆造）
+Stage 1: Image Prompt → Generate storyboard image (control scene/style/lighting/atmosphere/color/makeup/costume)
          ↓
-阶段2: 分镜图作为首帧 → img2video（Veo 3）
+Stage 2: Storyboard image as first frame → img2video (Veo 3)
 ```
 
-### Step 1: 生成分镜图
+### Step 1: Generate Storyboard Image
 
-使用 image_prompt 生成分镜图：
+Use image_prompt to generate storyboard image:
 
 ```bash
 python video_gen_tools.py image \
   --prompt "Cinematic realistic start frame.
-Scene: 温馨咖啡馆内部...
+Scene: Cozy coffee shop interior...
 A 25-year-old Asian woman with long black hair...
 Style: Cinematic realistic, 9:16 aspect ratio" \
   --aspect-ratio 9:16 \
   --output generated/frames/scene1_shot1_frame.png
 ```
 
-### Step 2: 分镜图作为首帧生成视频
+### Step 2: Storyboard Image as First Frame for Video Generation
 
 ```bash
 python video_gen_tools.py video \
   --image generated/frames/scene1_shot1_frame.png \
-  --prompt "图中人物缓缓睁开眼睛，露出温柔微笑。保持竖屏9:16构图。" \
+  --prompt "The person in the image slowly opens their eyes, revealing a gentle smile. Keep 9:16 vertical composition." \
   --duration 5 \
   --resolution 1080p \
   --aspect-ratio 9:16 \
@@ -242,183 +242,183 @@ python video_gen_tools.py video \
   --output generated/videos/scene1_shot1.mp4
 ```
 
-### 跨镜头角色一致性
+### Cross-shot Character Consistency
 
-由于 Veo 3 不支持多参考图，跨镜头一致性需要通过：
+Since Veo 3 doesn't support multiple reference images, cross-shot consistency needs:
 
-1. **角色参考图**：用于生成分镜图时保持人物外貌一致
-2. **详细的文字描述**：每个 image_prompt 使用相同的人物描述
-3. **分镜图首帧**：确保场景和人物姿态一致
+1. **Character Reference Image**: Used to maintain character appearance consistency when generating storyboard images
+2. **Detailed Text Description**: Use same character description in each image_prompt
+3. **Storyboard Image First Frame**: Ensures scene and character posture consistency
 
-**角色一致性模板**：
+**Character Consistency Template**:
 
-在每个包含人物的分镜图 image_prompt 中，保持以下描述一致：
+In each image_prompt containing characters, keep the following description consistent:
 
 ```
-人物标识：{名字}
-外貌特征：{性别}，{年龄}，{发型}，{面部特征}，{体型}
-服饰描述：{款式}，{颜色}，{材质}，{配饰}
-标志性特征：{特殊标记、习惯动作等}
+Character ID: {name}
+Appearance features: {gender}, {age}, {hairstyle}, {facial features}, {body type}
+Clothing description: {style}, {color}, {material}, {accessories}
+Signature features: {Special marks, habitual gestures, etc.}
 ```
 
-**示例**：
+**Example**:
 ```
-小美，25岁亚洲女性，黑色长直发及腰，瓜子脸，大眼睛，
-穿着白色衬衫和牛仔裤，戴着细银项链，
-习惯性将头发别到耳后
+Xiaomei, 25-year-old Asian female, long straight black hair to waist, oval face, large eyes,
+wearing white shirt and jeans, wearing thin silver necklace,
+habitually tucks hair behind ear
 ```
 
 ---
 
-## 一致性规范
+## Consistency Standards
 
-### 单一镜头内的一致性
+### Within Single Shot
 
-- 保持主体特征描述一致
-- 保持场景描述一致
-- 保持风格描述一致
+- Keep subject feature description consistent
+- Keep scene description consistent
+- Keep style description consistent
 
-### 跨镜头的一致性（Veo 3 限制）
+### Cross-shot Consistency (Veo 3 Limitation)
 
-Veo 3 不支持多参考图，跨镜头一致性需要通过：
+Veo 3 doesn't support multiple reference images, cross-shot consistency needs:
 
-1. **分镜图首帧**：先生成分镜图，再作为首帧生成视频
-2. **详细的文字描述**：每个镜头使用相同的人物描述
-3. **角色参考图**：用于生成分镜图时保持人物外貌
+1. **Storyboard image first frame**: First generate storyboard image, then use as first frame for video generation
+2. **Detailed text description**: Use same character description in each shot
+3. **Character reference image**: Used to maintain character appearance when generating storyboard images
 
 ---
 
-## 比例约束
+## Aspect Ratio Constraints
 
-### 画面比例
+### Aspect Ratios
 
-| 比例 | 适用平台 | 描述方式 |
-|------|---------|---------|
-| 9:16 | 抖音/小红书 | "竖屏构图，9:16画面比例，人物/主体位于画面中央" |
-| 16:9 | B站/YouTube | "横屏构图，16:9画面比例" |
-| 1:1 | Instagram | "正方形构图，1:1画面比例，主体居中" |
+| Ratio | Platform | Description |
+|-------|----------|-------------|
+| 9:16 | TikTok/Xiaohongshu | "Vertical composition, 9:16 aspect ratio, character/subject centered in frame" |
+| 16:9 | Bilibili/YouTube | "Horizontal composition, 16:9 aspect ratio" |
+| 1:1 | Instagram | "Square composition, 1:1 aspect ratio, subject centered" |
 
-### CLI 参数
+### CLI Parameters
 
 ```bash
-# 通过 --aspect-ratio 参数传递
+# Pass via --aspect-ratio parameter
 python video_gen_tools.py video --prompt "..." --aspect-ratio 9:16
 ```
 
-**重要**：`aspect_ratio` 从 `storyboard.json` 读取，所有视频生成必须传递此参数。
+**Important**: `aspect_ratio` is read from `storyboard.json`, all video generation must pass this parameter.
 
 ---
 
-## 台词与音频
+## Dialogue and Audio
 
-### Veo 3 自动音频
+### Veo 3 Automatic Audio
 
-Veo 3 自动生成以下音频：
-- **环境音**：风声、雨声、街道噪音、咖啡馆背景音等
-- **音效**：脚步声、开门声、物品碰撞等
-- **简单对话**：基本的语音内容
+Veo 3 automatically generates the following audio:
+- **Ambient Sounds**: Wind, rain, street noise, coffee shop background, etc.
+- **Sound Effects**: Footsteps, door opening, object collisions, etc.
+- **Simple Dialogue**: Basic voice content
 
-### 台词融入 Prompt
+### Dialogue Integration in Prompt
 
-当镜头包含台词时，**必须在 video_prompt 中完整描述**：角色（含外貌）、台词内容（引号包裹，**保持角色原语言**）、表情/情绪、声音特质和语速。
+When a shot contains dialogue, **must fully describe in video_prompt**: character (including appearance), dialogue content (in quotes, **keep character's original language**), expression/emotion, voice quality and speaking rate.
 
-**Prompt 用英文编写，台词保持角色语言**：
+**Prompt in English, dialogue keeps character language**:
 
 ```
 The female lead (a 25-year-old Asian woman with long black hair) looks up at the server,
-smiling gently and says, "这里真的很安静，我很喜欢。"
+smiling gently and says, "It's really quiet here, I like it."
 Clear, pleasant voice, moderate pace.
 ```
 
-### audio 字段与 API 映射
+### audio Field and API Mapping
 
-| storyboard 字段 | API 参数 | 说明 |
-|----------------|----------|------|
-| `audio.enabled = true` | `--audio` | 生成环境音/台词 |
-| `audio.enabled = false` | 无 `--audio` | 静音输出 |
+| Storyboard Field | API Parameter | Description |
+|-----------------|---------------|-------------|
+| `audio.enabled = true` | `--audio` | Generate ambient sound/dialogue |
+| `audio.enabled = false` | No `--audio` | Silent output |
 
-### BGM 约束
+### BGM Constraints
 
-BGM 由后期合成（Suno 生成或用户提供），不在视频生成阶段处理。
+BGM is mixed in post-production (Suno generated or user provided), not handled during video generation stage.
 
 ---
 
-## TTS 旁白生成
+## TTS Narration Generation
 
-**触发条件**：`storyboard.json` 存在 `narration_segments` 字段。
+**Trigger Condition**: `storyboard.json` has `narration_segments` field.
 
-**数据来源**：
-- `narration_config.voice_style` → 映射到 TTS 的 voice 和 emotion 参数
-- `narration_segments[].text` → TTS 的 --text 参数
-- `narration_segments[].segment_id` → 输出文件命名
+**Data Sources**:
+- `narration_config.voice_style` → Maps to TTS voice and emotion parameters
+- `narration_segments[].text` → TTS --text parameter
+- `narration_segments[].segment_id` → Output file naming
 
-**CLI 调用示例**：
+**CLI Call Example**:
 
 ```bash
-# 每段旁白单独生成
+# Generate each narration segment separately
 python video_gen_tools.py tts \
-  --text "这是一个宁静的下午，阳光透过落地窗洒进咖啡馆..." \
+  --text "This is a peaceful afternoon, sunlight streams through the floor-to-ceiling windows into the coffee shop..." \
   --voice female_narrator \
   --emotion gentle \
   --output generated/narration/narr_1.mp3
 ```
 
-**voice 参数（火山引擎 TTS 音色）**：
+**voice Parameter (Volcano Engine TTS Voices)**:
 
-| 参数值 | 音色说明 | 火山引擎 ID |
-|-------|---------|------------|
-| `female_narrator` | 女声旁白，专业沉稳 | BV700_streaming |
-| `female_gentle` | 女声温柔，柔和亲切 | BV034_streaming |
-| `male_narrator` | 男声旁白，专业沉稳 | BV701_streaming |
-| `male_warm` | 男声温暖，磁性亲切 | BV033_streaming |
+| Parameter Value | Voice Description | Volcano Engine ID |
+|----------------|-------------------|-------------------|
+| `female_narrator` | Female narrator, professional and steady | BV700_streaming |
+| `female_gentle` | Female voice gentle, soft and friendly | BV034_streaming |
+| `male_narrator` | Male narrator, professional and steady | BV701_streaming |
+| `male_warm` | Male voice warm, magnetic and friendly | BV033_streaming |
 
-**emotion 参数（可选）**：
+**emotion Parameter (Optional)**:
 
-| 参数值 | 情感风格 |
-|-------|---------|
-| `neutral` | 中性（默认） |
-| `happy` | 开心 |
-| `sad` | 悲伤 |
-| `gentle` | 温柔 |
-| `serious` | 严肃 |
+| Parameter Value | Emotion Style |
+|-----------------|---------------|
+| `neutral` | Neutral (default) |
+| `happy` | Happy |
+| `sad` | Sad |
+| `gentle` | Gentle |
+| `serious` | Serious |
 
-**voice_style 到 TTS 参数映射**：
+**voice_style to TTS Parameter Mapping**:
 
-用户在 Phase 2 指定的 voice_style（如"温柔女声"）会在 Phase 3 映射到具体的 TTS 参数：
-- "温柔女声" → `voice: female_gentle, emotion: gentle`
-- "专业女声旁白" → `voice: female_narrator, emotion: neutral`
-- "磁性男声" → `voice: male_warm, emotion: neutral`
-- "严肃男声" → `voice: male_narrator, emotion: serious`
+User-specified voice_style in Phase 2 (e.g. "gentle female voice") maps to specific TTS parameters in Phase 3:
+- "gentle female voice" → `voice: female_gentle, emotion: gentle`
+- "professional female narrator" → `voice: female_narrator, emotion: neutral`
+- "warm male voice" → `voice: male_warm, emotion: neutral`
+- "serious male voice" → `voice: male_narrator, emotion: serious`
 
-**重要**：一条视频内使用同一套 voice + emotion 参数，保证旁白风格统一。
+**Important**: Use the same voice + emotion parameters within one video to maintain consistent narration style.
 
 ---
 
-## 附录：模板速查
+## Appendix: Quick Templates
 
-### 文生视频模板（完整版）
+### Text-to-video Template (Complete)
 
 ```
-Overall: {镜头整体动作描述}
+Overall: {Shot overall action description}
 
 Segmented actions ({duration}s):
-{time_range_1}: {动作描述}
-{time_range_2}: {动作描述 + 台词同步}
+{time_range_1}: {Action description}
+{time_range_2}: {Action description + dialogue sync}
 
-Camera: {镜头运动描述}
-Rhythm: {运动节奏}
+Camera: {Camera movement description}
+Rhythm: {Movement rhythm}
 Stability: {stable/slight shake}
-{台词信息}
-Keep {比例} composition, maintain aspect ratio
+{Dialogue information}
+Keep {aspect ratio} composition, maintain aspect ratio
 ```
 
-### 文生视频模板（简洁版）
+### Text-to-video Template (Concise)
 
 ```
 [Subject] + [Action] + [Scene] + [Style] + [Camera] + [Aspect Ratio]
 ```
 
-### 图生视频模板
+### Image-to-video Template
 
 ```
 [Motion/Action] + [Atmosphere] + [Camera] + [Aspect Ratio Protection]
@@ -428,31 +428,31 @@ The woman in the image slowly opens her eyes with a gentle smile,
 warm atmosphere, slight push in, keep 9:16 vertical composition
 ```
 
-### image_prompt 模板（分镜图）
+### image_prompt Template (Storyboard Image)
 
 ```
 Cinematic realistic start frame.
 
-Scene: {场景描述}
-Location details: {环境细节}
+Scene: {Scene description}
+Location details: {Environment details}
 
-{人物外貌描述}, {姿态}, {表情}, {位置}
+{Character appearance description}, {posture}, {expression}, {position}
 
 Shot scale: {wide/medium/close-up}
 Camera angle: {eye-level/high/low}
-Lighting: {灯光描述}
-Color grade: {色调}
-Aspect ratio: {画面比例}
+Lighting: {Lighting description}
+Color grade: {Color tone}
+Aspect ratio: {Aspect ratio}
 
 Style: Cinematic realistic, film grain, shallow depth of field
 ```
 
-### 两阶段流程示例
+### Two-stage Process Example
 
 ```
-# Step 1: 生成分镜图
+# Step 1: Generate storyboard image
 image_prompt = "Cinematic start frame. A 25-year-old Asian woman with long black hair..."
 
-# Step 2: 分镜图作为首帧
-video_prompt = "图中人物缓缓睁开眼睛..."
+# Step 2: Storyboard image as first frame
+video_prompt = "The person in the image slowly opens their eyes..."
 ```

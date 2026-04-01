@@ -1,119 +1,119 @@
-# Veo 3 后端指南
+# Veo 3 Backend Guide
 
-## 目录
+## Table of Contents
 
-- Veo 3.1 Fast 能力概览
-- 项目类型与生成模式
-- 生成模式选择
-- 两阶段流程（虚构片/短剧）
-- Prompt 编写建议
-- 错误处理
-
----
-
-## Veo 3.1 Fast 能力概览
-
-| 功能 | 输入 | 输出 | 时长 | 分辨率 |
-|------|------|------|------|--------|
-| **文生视频 + 音频** | Text prompt | Video + Audio | 3-60s | 720p, 1080p, 4k |
-| **图生视频 + 音频** | Image + Text prompt | Video + Audio | 3-60s | 720p, 1080p, 4k |
-| **文生视频（无音频）** | Text prompt | Video | 3-60s | 720p, 1080p, 4k |
-| **图生视频（无音频）** | Image + Text prompt | Video | 3-60s | 720p, 1080p, 4k |
-
-**核心特点**：
-- **自动音频生成**：Veo 3 自动生成环境音、音效、简单对话
-- **图生视频**：支持图片作为起始帧
-- **高分辨率**：支持 720p、1080p、4k 输出
-- **长时长**：支持 3-60 秒视频
-
-**注意**：Veo 3 不支持多参考图（image_list）或多镜头（multi_shot）功能。
+- Veo 3.1 Fast Capabilities Overview
+- Project Type and Generation Mode
+- Generation Mode Selection
+- Two-stage Process (Fiction/Short Drama)
+- Prompt Writing Suggestions
+- Error Handling
 
 ---
 
-## 项目类型与生成模式
+## Veo 3.1 Fast Capabilities Overview
 
-### 项目类型判断
+| Feature | Input | Output | Duration | Resolution |
+|---------|-------|--------|----------|------------|
+| **Text-to-video + Audio** | Text prompt | Video + Audio | 3-60s | 720p, 1080p, 4k |
+| **Image-to-video + Audio** | Image + Text prompt | Video + Audio | 3-60s | 720p, 1080p, 4k |
+| **Text-to-video (no audio)** | Text prompt | Video | 3-60s | 720p, 1080p, 4k |
+| **Image-to-video (no audio)** | Image + Text prompt | Video | 3-60s | 720p, 1080p, 4k |
 
-| 用户意图关键词 | 项目类型 |
-|---------------|---------|
-| "短剧"、"剧情"、"故事" | 虚构片/短剧 |
-| "vlog"、"旅行记录"、"生活记录" | Vlog/写实类 |
-| "广告"、"宣传片"、"产品展示" | 广告片/宣传片 |
-| "MV"、"音乐视频" | MV短片 |
+**Key Features**:
+- **Automatic Audio Generation**: Veo 3 automatically generates ambient sounds, sound effects, simple dialogue
+- **Image-to-video**: Supports image as starting frame
+- **High Resolution**: Supports 720p, 1080p, 4k output
+- **Long Duration**: Supports 3-60 second videos
 
-### 生成模式选择
-
-| 项目类型 | 素材情况 | 生成模式 | 说明 |
-|---------|---------|---------|------|
-| **虚构片/短剧** | 有/无角色参考图 | **img2video** | 强制分镜图，角色一致性通过首帧控制 |
-| **MV短片** | 有/无角色参考图 | **img2video** | 强制分镜图，音乐驱动 |
-| **Vlog/写实类** | 用户真实素材 | **img2video** | 用户素材首帧控制 |
-| **广告片/宣传片** | 有真实素材 | **img2video** | 产品/企业素材首帧 |
-| **广告片/宣传片** | 无真实素材 | **img2video** | 强制分镜图 |
-| 无明确类型 | 无素材 | **text2video** | 纯文生视频 |
+**Note**: Veo 3 doesn't support multiple reference images (image_list) or multi-shot (multi_shot) features.
 
 ---
 
-## 生成模式选择
+## Project Type and Generation Mode
 
-### 决策树
+### Project Type Determination
+
+| User Intent Keywords | Project Type |
+|---------------------|--------------|
+| "drama", "story", "narrative" | Fiction/Short Drama |
+| "vlog", "travel diary", "life record" | Vlog/Documentary |
+| "commercial", "promotional video", "product showcase" | Commercial/Promotional |
+| "MV", "music video" | MV Short Film |
+
+### Generation Mode Selection
+
+| Project Type | Material Situation | Generation Mode | Description |
+|--------------|-------------------|-----------------|-------------|
+| **Fiction/Short Drama** | With/without character reference | **img2video** | Mandatory storyboard image, character consistency via first frame control |
+| **MV Short Film** | With/without character reference | **img2video** | Mandatory storyboard image, music-driven |
+| **Vlog/Documentary** | User's real materials | **img2video** | User material first frame control |
+| **Commercial/Promotional** | Has real materials | **img2video** | Product/company material first frame |
+| **Commercial/Promotional** | No real materials | **img2video** | Mandatory storyboard image |
+| No clear type | No materials | **text2video** | Pure text-to-video |
+
+---
+
+## Generation Mode Selection
+
+### Decision Tree
 
 ```
-有素材图片吗？
-├── 有 → 图生视频模式
-│         └── python video_gen_tools.py video --image <图片> --prompt <描述> --audio
+Have material images?
+├── Yes → Image-to-video mode
+│         └── python video_gen_tools.py video --image <image> --prompt <description> --audio
 │
-└── 无 → 文生视频模式
-          └── python video_gen_tools.py video --prompt <描述> --audio
+└── No → Text-to-video mode
+          └── python video_gen_tools.py video --prompt <description> --audio
 ```
 
-### 场景速查
+### Scenario Quick Reference
 
-| 场景 | 模式 | 命令示例 |
-|------|------|---------|
-| **虚构片/短剧** | img2video（先分镜图） | 生成分镜图 → `--image frame.png --prompt "动作描述" --audio` |
-| **Vlog/写实类** | img2video（用户素材） | `--image user_photo.jpg --prompt "动作描述" --audio` |
-| **纯创意生成** | text2video | `--prompt "一只猫在阳光下打盹" --audio` |
-| **需要最高画质** | 4k 文生 | `--resolution 4k --prompt "..." --audio` |
+| Scenario | Mode | Command Example |
+|----------|------|-----------------|
+| **Fiction/Short Drama** | img2video (storyboard image first) | Generate storyboard image → `--image frame.png --prompt "action description" --audio` |
+| **Vlog/Documentary** | img2video (user materials) | `--image user_photo.jpg --prompt "action description" --audio` |
+| **Pure Creative Generation** | text2video | `--prompt "A cat napping in the sunlight" --audio` |
+| **Need Highest Quality** | 4k text-to-video | `--resolution 4k --prompt "..." --audio` |
 
 ---
 
-## 两阶段流程（虚构片/短剧）
+## Two-stage Process (Fiction/Short Drama)
 
-**虚构片/短剧、MV短片必须走两阶段流程**：
+**Fiction/Short Drama, MV Short Films must follow two-stage process**:
 
 ```
-阶段1: Image Prompt → 生成分镜图（控制场景/画风/灯光/氛围/色彩/妆造）
+Stage 1: Image Prompt → Generate storyboard image (control scene/style/lighting/atmosphere/color/makeup/costume)
          ↓
-阶段2: 分镜图作为首帧 → img2video（Veo 3）
+Stage 2: Storyboard image as first frame → img2video (Veo 3)
 ```
 
-### Step 1: 生成分镜图
+### Step 1: Generate Storyboard Image
 
-使用 image_prompt 生成分镜图：
+Use image_prompt to generate storyboard image:
 
 ```bash
 python video_gen_tools.py image \
-  --prompt "Cinematic realistic start frame.\nScene: 温馨咖啡馆...\nLighting: 温暖光线...\nAspect ratio: 9:16" \
+  --prompt "Cinematic realistic start frame.\nScene: Cozy coffee shop...\nLighting: Warm lighting...\nAspect ratio: 9:16" \
   --aspect-ratio 9:16 \
   --output generated/frames/scene1_shot1_frame.png
 ```
 
-**image_prompt 要素**：
-- 场景描述
-- 人物外貌、服饰、姿态
-- 光影氛围
-- 镜头参数
-- **画面比例**
+**image_prompt Elements**:
+- Scene description
+- Character appearance, clothing, posture
+- Lighting atmosphere
+- Camera parameters
+- **Aspect ratio**
 
-详见 [prompt-guide.md](prompt-guide.md) 的 image_prompt 模板。
+See [prompt-guide.md](prompt-guide.md) for image_prompt template details.
 
-### Step 2: 分镜图作为首帧生成视频
+### Step 2: Storyboard Image as First Frame for Video Generation
 
 ```bash
 python video_gen_tools.py video \
   --image generated/frames/scene1_shot1_frame.png \
-  --prompt "图中人物缓缓睁开眼睛，露出温柔微笑。保持竖屏9:16构图。" \
+  --prompt "The person in the image slowly opens their eyes, revealing a gentle smile. Keep 9:16 vertical composition." \
   --duration 5 \
   --resolution 1080p \
   --aspect-ratio 9:16 \
@@ -121,75 +121,75 @@ python video_gen_tools.py video \
   --output generated/videos/scene1_shot1.mp4
 ```
 
-### 跨镜头角色一致性
+### Cross-shot Character Consistency
 
-由于 Veo 3 不支持多参考图，跨镜头一致性需要通过：
+Since Veo 3 doesn't support multiple reference images, cross-shot consistency needs:
 
-1. **角色参考图**：用于生成分镜图时保持人物外貌一致
-2. **详细的文字描述**：每个 image_prompt 使用相同的人物描述
-3. **分镜图首帧**：确保场景和人物姿态一致
-
----
-
-## Prompt 编写建议
-
-### 文生视频 Prompt 结构
-
-```
-[主体描述] + [动作/运动] + [场景/环境] + [风格/氛围] + [镜头语言]
-```
-
-**示例**：
-```
-一位25岁的亚洲女性，黑色长直发，穿着米色针织衫，
-坐在温馨的咖啡馆窗边，缓缓睁开眼睛，露出温柔的微笑，
-温暖的午后阳光透过落地窗洒进来，电影感色调，浅景深，
-镜头缓慢推近，竖屏9:16构图
-```
-
-### 图生视频 Prompt 结构
-
-```
-[动作] + [氛围] + [镜头] + [比例保护]
-```
-
-**示例**：
-```
-图中人物缓缓睁开眼睛，露出温柔微笑，
-温暖氛围，轻微推进，保持竖屏9:16构图
-```
-
-### 音频生成
-
-Veo 3 自动生成音频，包括：
-- **环境音**：风声、雨声、街道噪音等
-- **音效**：脚步声、开门声、物品碰撞等
-- **简单对话**：基本的语音内容
-
-**注意**：复杂对话或特定台词建议后期使用 TTS 配音。
+1. **Character Reference Image**: Used to maintain character appearance consistency when generating storyboard images
+2. **Detailed Text Description**: Use same character description in each image_prompt
+3. **Storyboard Image First Frame**: Ensures scene and character posture consistency
 
 ---
 
-## 错误处理
+## Prompt Writing Suggestions
 
-### API 错误码
+### Text-to-video Prompt Structure
 
-| 错误码 | 含义 | 处理方式 |
-|--------|------|---------|
-| **401** | API Key 无效 | 检查 COMPASS_API_KEY 配置 |
-| **402** | 余额不足 | 提醒用户充值 |
-| **429** | 频率限制 | 等待 60 秒后重试 |
-| **500** | 服务器错误 | 重试 2 次，失败后询问用户 |
+```
+[Subject description] + [Action/Motion] + [Scene/Environment] + [Style/Atmosphere] + [Camera language]
+```
 
-### 任务超时
+**Example**:
+```
+A 25-year-old Asian woman, long straight black hair, wearing a beige knit sweater,
+sitting by the window in a cozy coffee shop, slowly opening her eyes with a gentle smile,
+warm afternoon sunlight streaming through the floor-to-ceiling windows, cinematic color grading, shallow depth of field,
+camera slowly pushing in, 9:16 vertical composition
+```
 
-Veo 3 生成可能需要 1-5 分钟，取决于视频长度和分辨率。
-- 默认超时：600 秒（10 分钟）
-- 长视频（30秒+）建议预留更多时间
+### Image-to-video Prompt Structure
 
-### 生成失败
+```
+[Action] + [Atmosphere] + [Camera] + [Aspect Ratio Protection]
+```
 
-如果生成失败：
-1. 检查 prompt 是否过于复杂或包含敏感内容
-2. 尝试简化 prompt 或降低分辨率
-3. 联系用户确认是否需要调整创意方向
+**Example**:
+```
+The person in the image slowly opens their eyes, revealing a gentle smile,
+warm atmosphere, slight push in, keep 9:16 vertical composition
+```
+
+### Audio Generation
+
+Veo 3 automatically generates audio, including:
+- **Ambient Sounds**: Wind, rain, street noise, etc.
+- **Sound Effects**: Footsteps, door opening, object collisions, etc.
+- **Simple Dialogue**: Basic voice content
+
+**Note**: For complex dialogue or specific lines, recommend using TTS dubbing in post-production.
+
+---
+
+## Error Handling
+
+### API Error Codes
+
+| Error Code | Meaning | Handling |
+|------------|---------|----------|
+| **401** | Invalid API Key | Check COMPASS_API_KEY configuration |
+| **402** | Insufficient Balance | Remind user to top up |
+| **429** | Rate Limit | Wait 60 seconds then retry |
+| **500** | Server Error | Retry 2 times, then ask user if failed |
+
+### Task Timeout
+
+Veo 3 generation may take 1-5 minutes, depending on video length and resolution.
+- Default timeout: 600 seconds (10 minutes)
+- Long videos (30s+) recommend reserving more time
+
+### Generation Failed
+
+If generation fails:
+1. Check if prompt is too complex or contains sensitive content
+2. Try simplifying prompt or lowering resolution
+3. Contact user to confirm if creative direction needs adjustment

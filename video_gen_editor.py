@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Vico Editor - FFmpeg 视频剪辑命令行工具
+Vico Editor - FFmpeg video editing command-line tool
 
-用法：
+Usage:
   python video_gen_editor.py concat --inputs <video1> <video2> --output <output.mp4>
   python video_gen_editor.py subtitle --video <video> --srt <subtitle.srt> --output <output.mp4>
   python video_gen_editor.py mix --video <video> --bgm <music.mp3> --output <output.mp4>
@@ -21,21 +21,21 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
-# 设置日志
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-FFMPEG_TIMEOUT = 300  # 5 分钟
+FFMPEG_TIMEOUT = 300  # 5 minutes
 
 
-# ============== 工具函数 ==============
+# ============== Utility Functions ==============
 
 async def run_ffmpeg(cmd: List[str], timeout: int = FFMPEG_TIMEOUT) -> Tuple[bool, str]:
-    """运行 FFmpeg 命令"""
-    logger.info(f"执行: {' '.join(cmd[:10])}...")
+    """Run FFmpeg command"""
+    logger.info(f"Executing: {' '.join(cmd[:10])}...")
 
     try:
         process = await asyncio.create_subprocess_exec(
@@ -51,13 +51,13 @@ async def run_ffmpeg(cmd: List[str], timeout: int = FFMPEG_TIMEOUT) -> Tuple[boo
             )
         except asyncio.TimeoutError:
             process.kill()
-            return False, f"FFmpeg 超时 ({timeout}秒)"
+            return False, f"FFmpeg timeout ({timeout} seconds)"
 
         if process.returncode == 0:
-            return True, "成功"
+            return True, "Success"
         else:
             error_msg = stderr.decode()[:500]
-            logger.error(f"FFmpeg 错误: {error_msg}")
+            logger.error(f"FFmpeg error: {error_msg}")
             return False, error_msg
 
     except Exception as e:
@@ -65,16 +65,16 @@ async def run_ffmpeg(cmd: List[str], timeout: int = FFMPEG_TIMEOUT) -> Tuple[boo
 
 
 def get_resolution_for_aspect(aspect: str) -> Tuple[int, int]:
-    """获取指定宽高比的分辨率"""
+    """Get resolution for specified aspect ratio"""
     if aspect == "16:9":
         return (1920, 1080)
     elif aspect == "1:1":
         return (1080, 1080)
-    return (1080, 1920)  # 默认 9:16
+    return (1080, 1920)  # Default 9:16
 
 
 def get_aspect_from_storyboard(storyboard_path: str) -> Optional[str]:
-    """从 storyboard.json 读取 aspect_ratio"""
+    """Read aspect_ratio from storyboard.json"""
     try:
         with open(storyboard_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -84,7 +84,7 @@ def get_aspect_from_storyboard(storyboard_path: str) -> Optional[str]:
 
 
 async def has_audio_track(video_path: str) -> bool:
-    """检测视频是否有音频轨"""
+    """Detect if video has audio track"""
     cmd = [
         "ffprobe", "-v", "error",
         "-select_streams", "a",
@@ -105,7 +105,7 @@ async def has_audio_track(video_path: str) -> bool:
 
 
 async def get_video_info(video_path: str) -> Dict[str, Any]:
-    """获取视频信息"""
+    """Get video information"""
     cmd = [
         "ffprobe", "-v", "quiet",
         "-print_format", "json",
@@ -125,12 +125,12 @@ async def get_video_info(video_path: str) -> Dict[str, Any]:
             return json.loads(stdout.decode())
         return {}
     except Exception as e:
-        logger.error(f"获取视频信息失败: {e}")
+        logger.error(f"Failed to get video information: {e}")
         return {}
 
 
 async def get_video_duration(video_path: str) -> float:
-    """获取视频时长（秒）"""
+    """Get video duration (seconds)"""
     info = await get_video_info(video_path)
     if info:
         duration = info.get("format", {}).get("duration")
@@ -140,21 +140,21 @@ async def get_video_duration(video_path: str) -> float:
 
 
 async def get_video_specs(video_path: str) -> Dict[str, Any]:
-    """获取视频详细参数"""
+    """Get video detailed parameters"""
     info = await get_video_info(video_path)
     if not info:
-        return {"path": video_path, "error": "无法获取视频信息"}
+        return {"path": video_path, "error": "Unable to get video information"}
 
     specs = {"path": video_path}
 
-    # 从 streams 中获取视频参数
+    # Get video parameters from streams
     for stream in info.get("streams", []):
         if stream.get("codec_type") == "video":
             specs["width"] = stream.get("width", 0)
             specs["height"] = stream.get("height", 0)
             specs["codec"] = stream.get("codec_name", "unknown")
             specs["pix_fmt"] = stream.get("pix_fmt", "unknown")
-            # 帧率可能是 "24/1" 或 "23.976" 格式
+            # Frame rate may be in "24/1" or "23.976" format
             fps_str = stream.get("r_frame_rate", "0/1")
             if "/" in fps_str:
                 num, den = fps_str.split("/")
@@ -163,7 +163,7 @@ async def get_video_specs(video_path: str) -> Dict[str, Any]:
                 specs["fps"] = float(fps_str)
             break
 
-    # 时长
+    # Duration
     specs["duration"] = float(info.get("format", {}).get("duration", 0))
 
     return specs
@@ -171,13 +171,13 @@ async def get_video_specs(video_path: str) -> Dict[str, Any]:
 
 async def validate_videos(video_paths: List[str]) -> Dict[str, Any]:
     """
-    校验所有视频参数是否一致
+    Validate all video parameters for consistency
 
     Returns:
         {
             "consistent": bool,
-            "issues": List[str],  # 问题描述
-            "specs": List[dict],  # 每个视频的参数
+            "issues": List[str],  # Issue descriptions
+            "specs": List[dict],  # Parameters for each video
         }
     """
     specs_list = []
@@ -185,7 +185,7 @@ async def validate_videos(video_paths: List[str]) -> Dict[str, Any]:
         specs = await get_video_specs(path)
         specs_list.append(specs)
 
-    # 提取关键参数
+    # Extract key parameters
     resolutions = set()
     codecs = set()
     fps_values = set()
@@ -193,26 +193,26 @@ async def validate_videos(video_paths: List[str]) -> Dict[str, Any]:
 
     for specs in specs_list:
         if "error" in specs:
-            issues.append(f"视频参数错误: {specs['path']} - {specs['error']}")
+            issues.append(f"Video parameter error: {specs['path']} - {specs['error']}")
             continue
 
         resolutions.add((specs.get("width", 0), specs.get("height", 0)))
         codecs.add(specs.get("codec", "unknown"))
         fps_values.add(specs.get("fps", 0))
 
-    # 检查一致性
+    # Check consistency
     if len(resolutions) > 1:
         res_str = ", ".join([f"{w}x{h}" for w, h in resolutions])
-        issues.append(f"分辨率不一致: {res_str}")
+        issues.append(f"Inconsistent resolution: {res_str}")
 
     if len(codecs) > 1:
-        issues.append(f"编码不一致: {', '.join(codecs)}")
+        issues.append(f"Inconsistent codec: {', '.join(codecs)}")
 
     if len(fps_values) > 1:
-        # 允许轻微的帧率差异（如 23.976 vs 24）
+        # Allow minor frame rate differences (e.g., 23.976 vs 24)
         fps_range = max(fps_values) - min(fps_values)
         if fps_range > 1:
-            issues.append(f"帧率差异较大: {', '.join(map(str, fps_values))}")
+            issues.append(f"Large frame rate difference: {', '.join(map(str, fps_values))}")
 
     return {
         "consistent": len(issues) == 0,
@@ -227,17 +227,17 @@ async def normalize_videos(
     aspect: str = "9:16"
 ) -> List[str]:
     """
-    归一化所有视频到统一参数
+    Normalize all videos to unified parameters
 
-    统一参数：
-    - 分辨率：9:16 → 1080x1920, 16:9 → 1920x1080, 1:1 → 1080x1080
-    - 编码：H.264
-    - 帧率：24fps
-    - 像素格式：yuv420p
-    - 音频：统一 48kHz 立体声，无声片段补静音轨
+    Unified parameters:
+    - Resolution: 9:16 → 1080x1920, 16:9 → 1920x1080, 1:1 → 1080x1080
+    - Codec: H.264
+    - Frame rate: 24fps
+    - Pixel format: yuv420p
+    - Audio: Unified 48kHz stereo, add silent audio track for silent segments
 
     Returns:
-        归一化后的视频路径列表
+        List of normalized video paths
     """
     w, h = get_resolution_for_aspect(aspect)
     output_path = Path(output_dir)
@@ -249,11 +249,11 @@ async def normalize_videos(
     for i, video_path in enumerate(video_paths):
         output_file = output_path / f"normalized_{i:03d}.mp4"
 
-        # 检测是否有音频轨
+        # Detect if audio track exists
         has_audio = await has_audio_track(video_path)
 
         if has_audio:
-            # 有音频：正常归一化
+            # Has audio: normal normalization
             cmd = [
                 "ffmpeg", "-y",
                 "-i", video_path,
@@ -266,8 +266,8 @@ async def normalize_videos(
                 str(output_file)
             ]
         else:
-            # 无音频：补静音轨
-            logger.info(f"🔇 视频无音频轨，补静音轨: {video_path}")
+            # No audio: add silent audio track
+            logger.info(f"🔇 Video has no audio track, adding silent audio track: {video_path}")
             cmd = [
                 "ffmpeg", "-y",
                 "-i", video_path,
@@ -285,15 +285,15 @@ async def normalize_videos(
 
         if success:
             normalized_paths.append(str(output_file))
-            logger.info(f"✅ 视频归一化完成: {output_file}")
+            logger.info(f"✅ Video normalization completed: {output_file}")
         else:
-            logger.warning(f"⚠️ 视频归一化失败，使用原文件: {video_path}")
+            logger.warning(f"⚠️ Video normalization failed, using original file: {video_path}")
             normalized_paths.append(video_path)
 
     return normalized_paths
 
 
-# ============== 拼接视频 ==============
+# ============== Video Concatenation ==============
 
 async def concat_videos(
     inputs: List[str],
@@ -301,29 +301,29 @@ async def concat_videos(
     aspect: str = "9:16"
 ) -> Dict[str, Any]:
     """
-    拼接多个视频（使用 concat filter，保证音画同步）
+    Concatenate multiple videos (using concat filter to ensure audio-video sync)
 
     Args:
-        inputs: 输入视频路径列表（所有片段必须有音频轨，由 normalize_videos 保证）
-        output: 输出视频路径
-        aspect: 目标宽高比
+        inputs: List of input video paths (all segments must have audio tracks, guaranteed by normalize_videos)
+        output: Output video path
+        aspect: Target aspect ratio
     """
     if not inputs:
-        return {"success": False, "error": "没有输入视频"}
+        return {"success": False, "error": "No input videos"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
-    # 如果只有一个视频，直接复制
+    # If only one video, copy directly
     if len(inputs) == 1:
         import shutil
         shutil.copy(inputs[0], output)
         return {"success": True, "output": output}
 
-    # 使用 concat filter（所有片段必须有音频轨）
+    # Use concat filter (all segments must have audio tracks)
     n = len(inputs)
     filter_str = f"concat=n={n}:v=1:a=1[outv][outa]"
 
-    # 构建输入参数
+    # Build input parameters
     input_args = []
     for inp in inputs:
         input_args.extend(["-i", inp])
@@ -343,15 +343,15 @@ async def concat_videos(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 视频拼接完成: {output}")
+        logger.info(f"✅ Video concatenation completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 添加字幕 ==============
+# ============== Add Subtitles ==============
 
-# ASS 颜色格式: &HBBGGRR& (注意是 BGR 顺序)
+# ASS color format: &HBBGGRR& (note: BGR order)
 ASS_COLORS = {
     "white": "&HFFFFFF&",
     "black": "&H000000&",
@@ -373,20 +373,20 @@ async def add_subtitles(
     position: str = "bottom"
 ) -> Dict[str, Any]:
     """
-    添加字幕到视频
+    Add subtitles to video
 
     Args:
-        video: 输入视频
-        srt: SRT 字幕文件
-        output: 输出视频
-        font_size: 字体大小
-        font_color: 字体颜色
-        position: 位置 (bottom/top/center)
+        video: Input video
+        srt: SRT subtitle file
+        output: Output video
+        font_size: Font size
+        font_color: Font color
+        position: Position (bottom/top/center)
     """
     if not os.path.exists(video):
-        return {"success": False, "error": f"视频不存在: {video}"}
+        return {"success": False, "error": f"Video does not exist: {video}"}
     if not os.path.exists(srt):
-        return {"success": False, "error": f"字幕文件不存在: {srt}"}
+        return {"success": False, "error": f"Subtitle file does not exist: {srt}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
@@ -406,13 +406,13 @@ async def add_subtitles(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 字幕添加完成: {output}")
+        logger.info(f"✅ Subtitle addition completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 音频混合 ==============
+# ============== Audio Mixing ==============
 
 async def mix_audio(
     video: str,
@@ -424,27 +424,27 @@ async def mix_audio(
     tts_volume: float = 1.0
 ) -> Dict[str, Any]:
     """
-    混合音频
+    Mix audio
 
     Args:
-        video: 输入视频
-        output: 输出视频
-        bgm: 背景音乐（可选）
-        tts: 旁白音频（可选）
-        video_volume: 原视频音量（0-1）
-        bgm_volume: BGM 音量（0-1）
-        tts_volume: TTS 音量（0-1）
+        video: Input video
+        output: Output video
+        bgm: Background music (optional)
+        tts: Narration audio (optional)
+        video_volume: Original video volume (0-1)
+        bgm_volume: BGM volume (0-1)
+        tts_volume: TTS volume (0-1)
     """
     if not os.path.exists(video):
-        return {"success": False, "error": f"视频不存在: {video}"}
+        return {"success": False, "error": f"Video does not exist: {video}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
-    # 构建音频混合滤镜
+    # Build audio mixing filter
     audio_inputs = []
     filter_parts = []
 
-    # 原视频音频
+    # Original video audio
     audio_inputs.extend(["-i", video])
     filter_parts.append(f"[0:a]volume={video_volume}[a0]")
 
@@ -453,7 +453,7 @@ async def mix_audio(
     # BGM
     if bgm and os.path.exists(bgm):
         audio_inputs.extend(["-i", bgm])
-        # 循环 BGM 以匹配视频时长
+        # Loop BGM to match video duration
         video_duration = await get_video_duration(video)
         filter_parts.append(f"[{input_idx}:a]volume={bgm_volume},aloop=loop=-1:size=2e+09,atrim=duration={video_duration}[a{input_idx}]")
         input_idx += 1
@@ -464,9 +464,10 @@ async def mix_audio(
         filter_parts.append(f"[{input_idx}:a]volume={tts_volume}[a{input_idx}]")
         input_idx += 1
 
-    # 混合所有音频
+    # Mix all audio
     mix_inputs = "".join([f"[a{i}]" for i in range(input_idx)])
-    filter_parts.append(f"{mix_inputs}amix=inputs={input_idx}:duration=first:dropout_transition=2[aout]")
+    # normalize=0: disable FFmpeg auto-normalization, preserve original volume ratios
+    filter_parts.append(f"{mix_inputs}amix=inputs={input_idx}:duration=first:dropout_transition=2:normalize=0[aout]")
 
     filter_complex = ";".join(filter_parts)
 
@@ -485,15 +486,15 @@ async def mix_audio(
     success, msg = await run_ffmpeg(cmd, timeout=600)
 
     if success:
-        logger.info(f"✅ 音频混合完成: {output}")
+        logger.info(f"✅ Audio mixing completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 转场效果 ==============
+# ============== Transition Effects ==============
 
-# 支持的转场类型
+# Supported transition types
 TRANSITION_TYPES = [
     "fade", "dissolve", "wipeleft", "wiperight", "wipeup", "wipedown",
     "slideleft", "slideright", "slideup", "slidedown",
@@ -509,39 +510,39 @@ async def add_transition(
     duration: float = 0.5
 ) -> Dict[str, Any]:
     """
-    添加转场效果
+    Add transition effect
 
     Args:
-        inputs: 输入视频列表（两个）
-        output: 输出视频
-        transition_type: 转场类型
-        duration: 转场时长（秒）
+        inputs: Input video list (two videos)
+        output: Output video
+        transition_type: Transition type
+        duration: Transition duration (seconds)
     """
     if len(inputs) != 2:
-        return {"success": False, "error": "需要两个输入视频"}
+        return {"success": False, "error": "Two input videos required"}
 
     video1, video2 = inputs
 
     if not os.path.exists(video1):
-        return {"success": False, "error": f"视频不存在: {video1}"}
+        return {"success": False, "error": f"Video does not exist: {video1}"}
     if not os.path.exists(video2):
-        return {"success": False, "error": f"视频不存在: {video2}"}
+        return {"success": False, "error": f"Video does not exist: {video2}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
-    # 验证转场类型
+    # Validate transition type
     if transition_type not in TRANSITION_TYPES:
         transition_type = "fade"
 
-    # 获取第一个视频的时长
+    # Get duration of first video
     duration1 = await get_video_duration(video1)
     if duration1 <= 0:
-        return {"success": False, "error": "无法获取视频时长"}
+        return {"success": False, "error": "Unable to get video duration"}
 
-    # 计算转场偏移量
+    # Calculate transition offset
     offset = duration1 - duration
 
-    # 使用 xfade 滤镜
+    # Use xfade filter
     filter_complex = f"[0:v][1:v]xfade=transition={transition_type}:duration={duration}:offset={offset}[outv];[0:a][1:a]acrossfade=d={duration}[outa]"
 
     cmd = [
@@ -559,13 +560,13 @@ async def add_transition(
     success, msg = await run_ffmpeg(cmd, timeout=600)
 
     if success:
-        logger.info(f"✅ 转场添加完成: {output}")
+        logger.info(f"✅ Transition addition completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 调色 ==============
+# ============== Color Grading ==============
 
 COLOR_PRESETS = {
     "warm": "colorbalance=rs=0.1:gs=0:bs=-0.1,eq=contrast=1.1:saturation=1.2",
@@ -583,15 +584,15 @@ async def color_grade(
     preset: str = "warm"
 ) -> Dict[str, Any]:
     """
-    视频调色
+    Video color grading
 
     Args:
-        video: 输入视频
-        output: 输出视频
-        preset: 调色预设 (warm/cool/vibrant/cinematic/desaturated/vintage)
+        video: Input video
+        output: Output video
+        preset: Color grading preset (warm/cool/vibrant/cinematic/desaturated/vintage)
     """
     if not os.path.exists(video):
-        return {"success": False, "error": f"视频不存在: {video}"}
+        return {"success": False, "error": f"Video does not exist: {video}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
@@ -609,13 +610,13 @@ async def color_grade(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 调色完成 ({preset}): {output}")
+        logger.info(f"✅ Color grading completed ({preset}): {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 变速 ==============
+# ============== Speed Change ==============
 
 def _build_atempo_chain(rate: float) -> str:
     """Build chained atempo filters for rates outside 0.5-2.0 range."""
@@ -637,17 +638,17 @@ async def change_speed(
     rate: float = 1.0
 ) -> Dict[str, Any]:
     """
-    视频变速
+    Video speed change
 
     Args:
-        video: 输入视频
-        output: 输出视频
-        rate: 速度倍率 (0.5=慢放, 2.0=快放)
+        video: Input video
+        output: Output video
+        rate: Speed rate (0.5=slow motion, 2.0=fast forward)
     """
     if not os.path.exists(video):
-        return {"success": False, "error": f"视频不存在: {video}"}
+        return {"success": False, "error": f"Video does not exist: {video}"}
     if rate <= 0:
-        return {"success": False, "error": f"倍率必须大于0: {rate}"}
+        return {"success": False, "error": f"Rate must be greater than 0: {rate}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
@@ -667,13 +668,13 @@ async def change_speed(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 变速完成 ({rate}x): {output}")
+        logger.info(f"✅ Speed change completed ({rate}x): {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 裁剪视频 ==============
+# ============== Video Trimming ==============
 
 async def trim_video(
     video: str,
@@ -682,16 +683,16 @@ async def trim_video(
     duration: float = None
 ) -> Dict[str, Any]:
     """
-    裁剪视频
+    Trim video
 
     Args:
-        video: 输入视频
-        output: 输出视频
-        start: 开始时间（秒）
-        duration: 持续时间（秒），None 表示到结尾
+        video: Input video
+        output: Output video
+        start: Start time (seconds)
+        duration: Duration (seconds), None means to the end
     """
     if not os.path.exists(video):
-        return {"success": False, "error": f"视频不存在: {video}"}
+        return {"success": False, "error": f"Video does not exist: {video}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
@@ -713,13 +714,13 @@ async def trim_video(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 裁剪完成: {output}")
+        logger.info(f"✅ Trimming completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 图片生成视频 ==============
+# ============== Image to Video ==============
 
 async def image_to_video(
     image: str,
@@ -729,24 +730,24 @@ async def image_to_video(
     zoom: bool = True
 ) -> Dict[str, Any]:
     """
-    图片生成视频（Ken Burns 效果）
+    Generate video from image (Ken Burns effect)
 
     Args:
-        image: 输入图片
-        output: 输出视频
-        duration: 时长（秒）
-        aspect: 宽高比
-        zoom: 是否添加缓慢缩放效果
+        image: Input image
+        output: Output video
+        duration: Duration (seconds)
+        aspect: Aspect ratio
+        zoom: Whether to add slow zoom effect
     """
     if not os.path.exists(image):
-        return {"success": False, "error": f"图片不存在: {image}"}
+        return {"success": False, "error": f"Image does not exist: {image}"}
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
     w, h = get_resolution_for_aspect(aspect)
 
     if zoom:
-        # Ken Burns 效果：缓慢缩放
+        # Ken Burns effect: slow zoom
         fps = 25
         total_frames = int(duration * fps)
         filter_str = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,zoompan=z='min(zoom+0.001,1.2)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"
@@ -768,52 +769,52 @@ async def image_to_video(
     success, msg = await run_ffmpeg(cmd)
 
     if success:
-        logger.info(f"✅ 图片生成视频完成: {output}")
+        logger.info(f"✅ Image to video completed: {output}")
         return {"success": True, "output": output}
     else:
         return {"success": False, "error": msg}
 
 
-# ============== 命令行入口 ==============
+# ============== Command Line Entry ==============
 
 async def cmd_concat(args):
-    """拼接命令"""
-    # 优先级：命令行 > storyboard.json > 默认值
+    """Concatenation command"""
+    # Priority: command line > storyboard.json > default value
     aspect = args.aspect
     if aspect is None and hasattr(args, 'storyboard') and args.storyboard:
         aspect = get_aspect_from_storyboard(args.storyboard)
         if aspect:
-            logger.info(f"📐 从 storyboard.json 读取宽高比: {aspect}")
+            logger.info(f"📐 Read aspect ratio from storyboard.json: {aspect}")
     if aspect is None:
-        aspect = "9:16"  # 最终默认值
-        logger.info(f"📐 使用默认宽高比: {aspect}")
+        aspect = "9:16"  # Final default value
+        logger.info(f"📐 Using default aspect ratio: {aspect}")
 
     inputs = args.inputs
     output_dir = Path(args.output).parent
 
-    # 先校验视频参数
-    logger.info("🔍 校验视频参数...")
+    # First validate video parameters
+    logger.info("🔍 Validating video parameters...")
     validation = await validate_videos(inputs)
 
     if not validation["consistent"]:
-        logger.warning(f"⚠️ 视频参数不一致: {validation['issues']}")
-        logger.info("🔧 自动归一化视频...")
+        logger.warning(f"⚠️ Video parameters inconsistent: {validation['issues']}")
+        logger.info("🔧 Auto-normalizing videos...")
 
-        # 创建临时目录存放归一化后的视频
+        # Create temporary directory for normalized videos
         normalize_dir = output_dir / "normalized_temp"
         inputs = await normalize_videos(inputs, str(normalize_dir), aspect)
 
-        # 清理临时文件标记
+        # Cleanup temporary files marker
         args._normalized_dir = normalize_dir
 
-    # 然后拼接
+    # Then concatenate
     result = await concat_videos(
         inputs=inputs,
         output=args.output,
         aspect=aspect
     )
 
-    # 清理临时归一化文件
+    # Cleanup temporary normalized files
     if hasattr(args, '_normalized_dir') and args._normalized_dir.exists():
         import shutil
         shutil.rmtree(args._normalized_dir)
@@ -823,7 +824,7 @@ async def cmd_concat(args):
 
 
 async def cmd_subtitle(args):
-    """字幕命令"""
+    """Subtitle command"""
     result = await add_subtitles(
         video=args.video,
         srt=args.srt,
@@ -837,7 +838,7 @@ async def cmd_subtitle(args):
 
 
 async def cmd_mix(args):
-    """音频混合命令"""
+    """Audio mixing command"""
     result = await mix_audio(
         video=args.video,
         output=args.output,
@@ -852,7 +853,7 @@ async def cmd_mix(args):
 
 
 async def cmd_transition(args):
-    """转场命令"""
+    """Transition command"""
     result = await add_transition(
         inputs=args.inputs,
         output=args.output,
@@ -864,7 +865,7 @@ async def cmd_transition(args):
 
 
 async def cmd_color(args):
-    """调色命令"""
+    """Color grading command"""
     result = await color_grade(
         video=args.video,
         output=args.output,
@@ -875,7 +876,7 @@ async def cmd_color(args):
 
 
 async def cmd_speed(args):
-    """变速命令"""
+    """Speed change command"""
     result = await change_speed(
         video=args.video,
         output=args.output,
@@ -886,7 +887,7 @@ async def cmd_speed(args):
 
 
 async def cmd_trim(args):
-    """裁剪命令"""
+    """Trim command"""
     result = await trim_video(
         video=args.video,
         output=args.output,
@@ -898,16 +899,16 @@ async def cmd_trim(args):
 
 
 async def cmd_image(args):
-    """图片生成视频命令"""
-    # 优先级：命令行 > storyboard.json > 默认值
+    """Image to video command"""
+    # Priority: command line > storyboard.json > default value
     aspect = args.aspect
     if aspect is None and hasattr(args, 'storyboard') and args.storyboard:
         aspect = get_aspect_from_storyboard(args.storyboard)
         if aspect:
-            logger.info(f"📐 从 storyboard.json 读取宽高比: {aspect}")
+            logger.info(f"📐 Read aspect ratio from storyboard.json: {aspect}")
     if aspect is None:
-        aspect = "9:16"  # 最终默认值
-        logger.info(f"📐 使用默认宽高比: {aspect}")
+        aspect = "9:16"  # Final default value
+        logger.info(f"📐 Using default aspect ratio: {aspect}")
 
     result = await image_to_video(
         image=args.image,
@@ -922,71 +923,71 @@ async def cmd_image(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Vico Editor - FFmpeg 视频剪辑命令行工具",
+        description="Vico Editor - FFmpeg video editing command-line tool",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    subparsers = parser.add_subparsers(dest="command", help="可用命令")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # concat 子命令
-    concat_parser = subparsers.add_parser("concat", help="拼接视频")
-    concat_parser.add_argument("--inputs", "-i", nargs="+", required=True, help="输入视频列表")
-    concat_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    concat_parser.add_argument("--aspect", "-a", default=None, help="宽高比（如 16:9, 9:16）")
-    concat_parser.add_argument("--storyboard", "-s", help="storyboard.json 路径，自动读取 aspect_ratio")
+    # concat subcommand
+    concat_parser = subparsers.add_parser("concat", help="Concatenate videos")
+    concat_parser.add_argument("--inputs", "-i", nargs="+", required=True, help="Input video list")
+    concat_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    concat_parser.add_argument("--aspect", "-a", default=None, help="Aspect ratio (e.g., 16:9, 9:16)")
+    concat_parser.add_argument("--storyboard", "-s", help="storyboard.json path, automatically read aspect_ratio")
 
-    # subtitle 子命令
-    subtitle_parser = subparsers.add_parser("subtitle", help="添加字幕")
-    subtitle_parser.add_argument("--video", "-v", required=True, help="输入视频")
-    subtitle_parser.add_argument("--srt", "-s", required=True, help="SRT 字幕文件")
-    subtitle_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    subtitle_parser.add_argument("--font-size", type=int, default=40, help="字体大小")
-    subtitle_parser.add_argument("--font-color", default="white", help="字体颜色")
-    subtitle_parser.add_argument("--position", default="bottom", choices=["bottom", "top", "center"], help="字幕位置")
+    # subtitle subcommand
+    subtitle_parser = subparsers.add_parser("subtitle", help="Add subtitles")
+    subtitle_parser.add_argument("--video", "-v", required=True, help="Input video")
+    subtitle_parser.add_argument("--srt", "-s", required=True, help="SRT subtitle file")
+    subtitle_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    subtitle_parser.add_argument("--font-size", type=int, default=40, help="Font size")
+    subtitle_parser.add_argument("--font-color", default="white", help="Font color")
+    subtitle_parser.add_argument("--position", default="bottom", choices=["bottom", "top", "center"], help="Subtitle position")
 
-    # mix 子命令
-    mix_parser = subparsers.add_parser("mix", help="音频混合")
-    mix_parser.add_argument("--video", "-v", required=True, help="输入视频")
-    mix_parser.add_argument("--bgm", "-b", help="背景音乐")
-    mix_parser.add_argument("--tts", "-t", help="旁白音频")
-    mix_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    mix_parser.add_argument("--video-volume", type=float, default=0.3, help="原视频音量")
-    mix_parser.add_argument("--bgm-volume", type=float, default=0.6, help="BGM 音量")
-    mix_parser.add_argument("--tts-volume", type=float, default=1.0, help="TTS 音量")
+    # mix subcommand
+    mix_parser = subparsers.add_parser("mix", help="Audio mixing")
+    mix_parser.add_argument("--video", "-v", required=True, help="Input video")
+    mix_parser.add_argument("--bgm", "-b", help="Background music")
+    mix_parser.add_argument("--tts", "-t", help="Narration audio")
+    mix_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    mix_parser.add_argument("--video-volume", type=float, default=0.3, help="Original video volume")
+    mix_parser.add_argument("--bgm-volume", type=float, default=0.6, help="BGM volume")
+    mix_parser.add_argument("--tts-volume", type=float, default=1.0, help="TTS volume")
 
-    # transition 子命令
-    transition_parser = subparsers.add_parser("transition", help="添加转场")
-    transition_parser.add_argument("--inputs", "-i", nargs="+", required=True, help="输入视频列表")
-    transition_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    transition_parser.add_argument("--type", "-t", default="fade", choices=TRANSITION_TYPES, help="转场类型")
-    transition_parser.add_argument("--duration", "-d", type=float, default=0.5, help="转场时长(秒)")
+    # transition subcommand
+    transition_parser = subparsers.add_parser("transition", help="Add transition")
+    transition_parser.add_argument("--inputs", "-i", nargs="+", required=True, help="Input video list")
+    transition_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    transition_parser.add_argument("--type", "-t", default="fade", choices=TRANSITION_TYPES, help="Transition type")
+    transition_parser.add_argument("--duration", "-d", type=float, default=0.5, help="Transition duration (seconds)")
 
-    # color 子命令
-    color_parser = subparsers.add_parser("color", help="视频调色")
-    color_parser.add_argument("--video", "-v", required=True, help="输入视频")
-    color_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    color_parser.add_argument("--preset", "-p", default="warm", choices=list(COLOR_PRESETS.keys()), help="调色预设")
+    # color subcommand
+    color_parser = subparsers.add_parser("color", help="Video color grading")
+    color_parser.add_argument("--video", "-v", required=True, help="Input video")
+    color_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    color_parser.add_argument("--preset", "-p", default="warm", choices=list(COLOR_PRESETS.keys()), help="Color grading preset")
 
-    # speed 子命令
-    speed_parser = subparsers.add_parser("speed", help="视频变速")
-    speed_parser.add_argument("--video", "-v", required=True, help="输入视频")
-    speed_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    speed_parser.add_argument("--rate", "-r", type=float, default=1.0, help="速度倍率")
+    # speed subcommand
+    speed_parser = subparsers.add_parser("speed", help="Video speed change")
+    speed_parser.add_argument("--video", "-v", required=True, help="Input video")
+    speed_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    speed_parser.add_argument("--rate", "-r", type=float, default=1.0, help="Speed rate")
 
-    # trim 子命令
-    trim_parser = subparsers.add_parser("trim", help="裁剪视频")
-    trim_parser.add_argument("--video", "-v", required=True, help="输入视频")
-    trim_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    trim_parser.add_argument("--start", "-s", type=float, default=0, help="开始时间(秒)")
-    trim_parser.add_argument("--duration", "-d", type=float, help="持续时间(秒)")
+    # trim subcommand
+    trim_parser = subparsers.add_parser("trim", help="Trim video")
+    trim_parser.add_argument("--video", "-v", required=True, help="Input video")
+    trim_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    trim_parser.add_argument("--start", "-s", type=float, default=0, help="Start time (seconds)")
+    trim_parser.add_argument("--duration", "-d", type=float, help="Duration (seconds)")
 
-    # image 子命令
-    image_parser = subparsers.add_parser("image", help="图片生成视频")
-    image_parser.add_argument("--image", "-i", required=True, help="输入图片")
-    image_parser.add_argument("--output", "-o", required=True, help="输出视频路径")
-    image_parser.add_argument("--duration", "-d", type=float, default=5.0, help="时长(秒)")
-    image_parser.add_argument("--aspect", "-a", default=None, help="宽高比")
-    image_parser.add_argument("--storyboard", "-s", help="storyboard.json 路径，自动读取 aspect_ratio")
-    image_parser.add_argument("--zoom", action="store_true", help="添加 Ken Burns 缩放效果")
+    # image subcommand
+    image_parser = subparsers.add_parser("image", help="Generate video from image")
+    image_parser.add_argument("--image", "-i", required=True, help="Input image")
+    image_parser.add_argument("--output", "-o", required=True, help="Output video path")
+    image_parser.add_argument("--duration", "-d", type=float, default=5.0, help="Duration (seconds)")
+    image_parser.add_argument("--aspect", "-a", default=None, help="Aspect ratio")
+    image_parser.add_argument("--storyboard", "-s", help="storyboard.json path, automatically read aspect_ratio")
+    image_parser.add_argument("--zoom", action="store_true", help="Add Ken Burns zoom effect")
 
     args = parser.parse_args()
 
@@ -994,7 +995,7 @@ def main():
         parser.print_help()
         return 1
 
-    # 运行对应命令
+    # Run corresponding command
     commands = {
         "concat": cmd_concat,
         "subtitle": cmd_subtitle,

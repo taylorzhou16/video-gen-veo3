@@ -1,14 +1,14 @@
-# API 工具参考（Veo 3）
+# API Tool Reference (Veo 3)
 
-**重要**：所有 `--prompt` 参数必须使用英文编写，以获得最佳生成效果。
+**Important**: All `--prompt` parameters must be written in English for best generation results.
 
-## video_gen_tools.py - API 工具
+## video_gen_tools.py - API Tools
 
 ```bash
-# 环境检查
+# Environment check
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py check
 
-# 文生视频
+# Text-to-video
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --prompt "A cat napping in the sunlight" \
   --duration 6 \
@@ -17,7 +17,7 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --audio \
   --output output.mp4
 
-# 图生视频（图片作为首帧）
+# Image-to-video (image as first frame)
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image input.jpg \
   --prompt "The person in the image starts to smile" \
@@ -27,122 +27,122 @@ python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --audio \
   --output output.mp4
 
-# 从 storyboard.json 读取比例
+# Read aspect ratio from storyboard.json
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --prompt "A woman sitting by a coffee shop window with a gentle smile" \
   --storyboard storyboard/storyboard.json \
   --audio \
   --output output.mp4
 
-# 图片生成（分镜图）
+# Image generation (storyboard image)
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py image \
   --prompt "Cinematic start frame. A woman sitting by a coffee shop window, warm lighting, cinematic look, 9:16 aspect ratio" \
   --aspect-ratio 9:16 \
   --output image.png
 
-# 音乐生成
+# Music generation
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py music \
   --prompt "Relaxing and pleasant background music" \
   --style "acoustic pop" \
   --output music.mp3
 
-# 从 creative.json 读取音乐配置
+# Read music config from creative.json
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py music \
   --creative creative/creative.json \
   --output music.mp3
 
-# TTS 语音
+# TTS voice synthesis
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py tts \
-  --text "要合成的文本" \
+  --text "Text to synthesize" \
   --voice female_narrator \
   --output audio.mp3
 ```
 
 ---
 
-## 参数说明
+## Parameter Reference
 
-### video 子命令
+### video subcommand
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `--prompt` / `-p` | 视频描述（必需） | - |
-| `--image` / `-i` | 首帧图片路径（图生视频） | - |
-| `--duration` / `-d` | 时长（秒），范围 3-60 | 5 |
-| `--resolution` / `-r` | 分辨率：720p, 1080p, 4k | 1080p |
-| `--aspect-ratio` / `-a` | 宽高比：9:16, 16:9, 1:1 | 9:16 |
-| `--storyboard` / `-s` | storyboard.json 路径，自动读取 aspect_ratio | - |
-| `--audio` | 生成音频 | True |
-| `--output` / `-o` | 输出文件路径 | - |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--prompt` / `-p` | Video description (required) | - |
+| `--image` / `-i` | First frame image path (for image-to-video) | - |
+| `--duration` / `-d` | Duration (seconds), range 3-60 | 5 |
+| `--resolution` / `-r` | Resolution: 720p, 1080p, 4k | 1080p |
+| `--aspect-ratio` / `-a` | Aspect ratio: 9:16, 16:9, 1:1 | 9:16 |
+| `--storyboard` / `-s` | storyboard.json path, auto-reads aspect_ratio | - |
+| `--audio` | Generate audio | True |
+| `--output` / `-o` | Output file path | - |
 
-### image 子命令
+### image subcommand
 
-| 参数 | 说明 |
-|------|------|
-| `--prompt` / `-p` | 图片描述（必需） |
-| `--aspect-ratio` / `-a` | 宽高比：9:16, 16:9, 1:1 |
-| `--reference` / `-r` | 参考图路径（用于角色一致性） |
-| `--output` / `-o` | 输出文件路径 |
+| Parameter | Description |
+|-----------|-------------|
+| `--prompt` / `-p` | Image description (required) |
+| `--aspect-ratio` / `-a` | Aspect ratio: 9:16, 16:9, 1:1 |
+| `--reference` / `-r` | Reference image path (for character consistency) |
+| `--output` / `-o` | Output file path |
 
-### music 子命令
+### music subcommand
 
-| 参数 | 说明 |
-|------|------|
-| `--prompt` / `-p` | 音乐描述 |
-| `--style` / `-s` | 音乐风格 |
-| `--creative` / `-c` | creative.json 路径 |
-| `--instrumental` | 纯音乐（默认 True） |
-| `--output` / `-o` | 输出文件路径 |
+| Parameter | Description |
+|-----------|-------------|
+| `--prompt` / `-p` | Music description |
+| `--style` / `-s` | Music style |
+| `--creative` / `-c` | creative.json path |
+| `--instrumental` | Instrumental only (default True) |
+| `--output` / `-o` | Output file path |
 
-### tts 子命令
+### tts subcommand
 
-| 参数 | 说明 |
-|------|------|
-| `--text` / `-t` | 要合成的文本（必需） |
-| `--voice` / `-v` | 音色：female_narrator, female_gentle, male_narrator, male_warm |
-| `--emotion` / `-e` | 情感：neutral, happy, sad, gentle, serious |
-| `--speed` | 语速（0.5-2.0） |
-| `--output` / `-o` | 输出文件路径（必需） |
+| Parameter | Description |
+|-----------|-------------|
+| `--text` / `-t` | Text to synthesize (required) |
+| `--voice` / `-v` | Voice: female_narrator, female_gentle, male_narrator, male_warm |
+| `--emotion` / `-e` | Emotion: neutral, happy, sad, gentle, serious |
+| `--speed` | Speaking rate (0.5-2.0) |
+| `--output` / `-o` | Output file path (required) |
 
 ---
 
-## video_gen_editor.py - 剪辑工具
+## video_gen_editor.py - Editing Tools
 
 ```bash
-# 拼接视频
+# Video concatenation
 python ~/.claude/skills/video-gen-veo3/video_gen_editor.py concat \
   --inputs video1.mp4 video2.mp4 \
   --output final.mp4 \
   --storyboard storyboard/storyboard.json
 
-# 音频混合
+# Audio mixing
 python ~/.claude/skills/video-gen-veo3/video_gen_editor.py mix \
   --video video.mp4 \
   --bgm music.mp3 \
   --output final.mp4
 
-# 转场
+# Transition
 python ~/.claude/skills/video-gen-veo3/video_gen_editor.py transition \
   --inputs video1.mp4 video2.mp4 \
   --type fade \
   --output output.mp4
 
-# 调色
+# Color grading
 python ~/.claude/skills/video-gen-veo3/video_gen_editor.py color \
   --video video.mp4 \
   --preset cinematic \
   --output output.mp4
 ```
 
-**转场类型**：fade | dissolve | wipeleft | wiperight | wipeup | wipedown | slideleft | slideright | slideup | slidedown | circleopen | circleclose
+**Transition Types**: fade | dissolve | wipeleft | wiperight | wipeup | wipedown | slideleft | slideright | slideup | slidedown | circleopen | circleclose
 
-**调色预设**：warm | cool | vibrant | cinematic | desaturated | vintage
+**Color Grading Presets**: warm | cool | vibrant | cinematic | desaturated | vintage
 
 ---
 
-## 配置文件
+## Configuration
 
-API Key 配置在 `~/.claude/skills/video-gen-veo3/config.json`：
+API Key configuration in `~/.claude/skills/video-gen-veo3/config.json`:
 
 ```json
 {
@@ -155,16 +155,16 @@ API Key 配置在 `~/.claude/skills/video-gen-veo3/config.json`：
 
 ---
 
-## 两阶段流程示例（虚构片）
+## Two-stage Process Example (Fiction)
 
 ```bash
-# Step 1: 生成分镜图
+# Step 1: Generate storyboard image
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py image \
   --prompt "Cinematic realistic start frame. A 25-year-old Asian woman with long black hair, sitting by a coffee shop window, warm lighting, cinematic look, 9:16 aspect ratio" \
   --aspect-ratio 9:16 \
   --output generated/frames/scene1_shot1_frame.png
 
-# Step 2: 分镜图作为首帧生成视频
+# Step 2: Use storyboard image as first frame for video generation
 python ~/.claude/skills/video-gen-veo3/video_gen_tools.py video \
   --image generated/frames/scene1_shot1_frame.png \
   --prompt "The woman in the image slowly opens her eyes with a gentle smile. Keep 9:16 vertical composition." \

@@ -1,206 +1,206 @@
-# Veo 3 分镜设计规范
+# Veo 3 Storyboard Design Specifications
 
-## 目录
+## Table of Contents
 
-- Storyboard 结构（Scene / Shot）
-- 人物注册与引用规范
-- 分镜设计原则与时长限制
-- shot_id 命名规则
-- T2V/I2V 选择规则
-- 两阶段流程（虚构片）
-- 首帧生成策略
-- 台词融入 video_prompt
-- 旁白分段规划（narration_segments）
-- Storyboard JSON 格式
-- Review 检查机制
-- 展示给用户确认
-
----
-
-## Storyboard 结构
-
-采用 **场景-分镜两层结构**：`scenes[] → shots[]`
-
-- **场景 (Scene)**：语义+视觉+时空相对稳定的叙事单元，时长 = 下属分镜时长之和
-- **分镜 (Shot)**：最小视频生成单元，时长固定 8 秒（Veo 3.1 Fast 最高分辨率要求）
+- Storyboard Structure (Scene / Shot)
+- Character Registration and Reference Guidelines
+- Storyboard Design Principles and Duration Limits
+- shot_id Naming Rules
+- T2V/I2V Selection Rules
+- Two-stage Process (Fiction)
+- First Frame Generation Strategy
+- Dialogue Integration in video_prompt
+- Narration Segmentation Planning (narration_segments)
+- Storyboard JSON Format
+- Review Check Mechanism
+- Present to User for Confirmation
 
 ---
 
-## 人物注册与引用规范
+## Storyboard Structure
 
-### 命名体系
+Uses **Scene-Shot two-layer structure**: `scenes[] → shots[]`
 
-| 层级 | 用途 | 命名规范 | 示例 |
-|------|------|---------|------|
-| **人物名称** | 显示名称，用于用户交互、中文描述 | 中文名 | `小美`, `主角` |
-| **性别** | 人物性别 | male / female | `female` |
-| **参考图** | 人物外貌参考 | 图片路径或 null | `/path/to/ref.jpg` |
-
-### Workflow 中的使用流程
-
-**Phase 1: 人物识别**
-- 用户确认人物身份后，注册到 personas.json
-- **注意**：Phase 1 只处理用户已上传的参考图，未上传的 `reference_image` 留空，由 Phase 2 补充
-
-**Phase 2: 角色参考图收集（关键）**
-- 检查 `reference_image` 为空的角色
-- 询问用户：AI生成 / 上传参考图 / 接受纯文字（警告）
-- 更新 personas.json
-
-**Phase 3: 分镜设计（LLM 自动生成）**
-- LLM 根据 personas.json 生成分镜
-- 虚构片/短剧：**强制先生成分镜图**，然后 img2video
-
-**Phase 4: 执行生成**
-- 虚构片：先用角色参考图生成分镜图，再用分镜图作为首帧生成视频
-- Vlog/写实类：直接用用户素材作为首帧
+- **Scene**: Semantically+visually+spatially relatively stable narrative unit, duration = sum of subordinate shot durations
+- **Shot**: Minimum video generation unit, fixed duration of 8 seconds (Veo 3.1 Fast maximum resolution requirement)
 
 ---
 
-## 场景字段（Scene）
+## Character Registration and Reference Guidelines
 
-- `scene_id`：场景编号（如 "scene_1"）
-- `scene_name`：场景名称
-- `duration`：场景总时长 = 下属所有分镜时长之和
-- `narrative_goal`：主叙事目标
-- `spatial_setting`：空间设定
-- `time_state`：时间状态
-- `visual_style`：视觉母风格
-- `shots[]`：分镜列表
+### Naming System
 
----
+| Level | Purpose | Naming Convention | Example |
+|-------|---------|-------------------|---------|
+| **Character Name** | Display name for user interaction, Chinese description | Chinese name | `Xiaomei`, `Protagonist` |
+| **Gender** | Character gender | male / female | `female` |
+| **Reference Image** | Character appearance reference | Image path or null | `/path/to/ref.jpg` |
 
-## 分镜字段（Shot）
+### Usage in Workflow
 
-- `shot_id`：分镜编号（格式见下文命名规则）
-- `duration`：时长（单位：秒，Veo 3.1 Fast 支持 4/6/8 秒，1080p/4k 必须用 8秒）
-- `shot_type`：景别类型，可选：establishing（全景）/ dialogue（对话）/ action（动作）/ closeup（特写）/ insert（插入镜头）
-- `description`：简要描述
-- `generation_mode`：生成模式，可选：text2video / img2video
-- `video_prompt`：视频生成提示词
-- `image_prompt`：图片提示词（img2video 时可选，用于生成分镜图）
-- `frame_path`：首帧图片路径（img2video 时使用）
-- `dialogue`：台词信息（结构化）
-- `transition`：转场效果
-- `audio`：音频配置（enabled, generate_audio）
-- `characters`：镜头涉及的角色（可选）
+**Phase 1: Character Identification**
+- After user confirms character identities, register to personas.json
+- **Note**: Phase 1 only processes reference images uploaded by user, for those not uploaded leave `reference_image` empty, supplemented in Phase 2
 
----
+**Phase 2: Character Reference Image Collection (Key)**
+- Check characters with empty `reference_image`
+- Ask user: AI generate / Upload reference image / Accept text-only (with warning)
+- Update personas.json
 
-## 分镜设计原则
+**Phase 3: Storyboard Design (LLM Auto-generation)**
+- LLM generates storyboard based on personas.json
+- Fiction/Short Drama: **Must generate storyboard image first**, then img2video
 
-1. **时长分配**：总时长 = 目标时长（±5秒）
-2. **节奏变化**：通过景别、转场、动作变化体现节奏
-3. **景别变化**：连续镜头应有景别差异
-4. **转场选择**：根据情绪选择合适转场
-5. **单一动作原则**：同一分镜内最多 1 个主要动作
-6. **空间不变原则**：禁止在 shot 内发生空间环境变化
-7. **描述具体原则**：禁止抽象动作描述，用具体动作替代
-
-### 时长限制（Veo 3.1 Fast）
-
-| 镜头类型 | 建议时长 | 说明 |
-|---------|---------|------|
-| 普通镜头 | 4-6 秒 | 对话、日常动作、中景镜头 |
-| 复杂运动 | 4 秒 | 快速运动、动作戏、推拉镜头 |
-| 静态情绪 | 6-8 秒 | 特写、情绪表达、缓推镜头 |
-
-**分辨率约束**：
-- **720p（默认）**：可用 4/6/8 秒
-- **1080p/4k**：**必须用 8 秒**
+**Phase 4: Generation Execution**
+- Fiction: First use character reference image to generate storyboard image, then use storyboard image as first frame for video generation
+- Vlog/Documentary: Directly use user materials as first frame
 
 ---
 
-## shot_id 命名规则
+## Scene Fields
 
-格式：`scene{场景号}_shot{分镜号}`
-
-| 类型 | 示例 | 说明 |
-|------|------|------|
-| 单分镜 | `scene1_shot1`、`scene2_shot1` | 标准命名 |
+- `scene_id`: Scene number (e.g. "scene_1")
+- `scene_name`: Scene name
+- `duration`: Total scene duration = sum of all subordinate shot durations
+- `narrative_goal`: Main narrative objective
+- `spatial_setting`: Spatial setting
+- `time_state`: Time state
+- `visual_style`: Visual master style
+- `shots[]`: Shot list
 
 ---
 
-## T2V/I2V 选择规则
+## Shot Fields
 
-### 项目类型与生成模式
+- `shot_id`: Shot number (format see naming rules below)
+- `duration`: Duration (unit: seconds, Veo 3.1 Fast supports 4/6/8 seconds, 1080p/4k must use 8 seconds)
+- `shot_type`: Shot type, options: establishing / dialogue / action / closeup / insert
+- `description`: Brief description
+- `generation_mode`: Generation mode, options: text2video / img2video
+- `video_prompt`: Video generation prompt
+- `image_prompt`: Image prompt (optional for img2video, used to generate storyboard image)
+- `frame_path`: First frame image path (used for img2video)
+- `dialogue`: Dialogue information (structured)
+- `transition`: Transition effect
+- `audio`: Audio configuration (enabled, generate_audio)
+- `characters`: Characters in shot (optional)
 
-| 项目类型 | 素材情况 | 生成模式 | 说明 |
-|---------|---------|---------|------|
-| **虚构片/短剧** | 有/无角色参考图 | `img2video` | 强制分镜图 |
-| **MV短片** | 有/无角色参考图 | `img2video` | 强制分镜图 |
-| **Vlog/写实类** | 用户真实素材 | `img2video` | 用户素材首帧 |
-| **广告片/宣传片** | 有真实素材 | `img2video` | 产品素材首帧 |
-| **广告片/宣传片** | 无真实素材 | `img2video` | 强制分镜图 |
-| 无明确类型 | 无素材 | `text2video` | 纯文生视频 |
+---
 
-### 决策树
+## Storyboard Design Principles
+
+1. **Duration Allocation**: Total duration = Target duration (±5s)
+2. **Rhythm Variation**: Reflect rhythm through shot type, transition, and action changes
+3. **Shot Type Variation**: Consecutive shots should have shot type differences
+4. **Transition Selection**: Choose appropriate transitions based on emotion
+5. **Single Action Principle**: Maximum 1 main action per shot
+6. **Spatial Invariance Principle**: No spatial environment changes within a shot
+7. **Concrete Description Principle**: Replace abstract action descriptions with concrete actions
+
+### Duration Limits (Veo 3.1 Fast)
+
+| Shot Type | Suggested Duration | Description |
+|-----------|-------------------|-------------|
+| Normal shots | 4-6s | Dialogue, daily actions, medium shots |
+| Complex motion | 4s | Fast motion, action scenes, push/pull shots |
+| Static emotion | 6-8s | Close-ups, emotional expression, slow push shots |
+
+**Resolution Constraints**:
+- **720p (default)**: Can use 4/6/8s
+- **1080p/4k**: **Must use 8s**
+
+---
+
+## shot_id Naming Rules
+
+Format: `scene{scene_number}_shot{shot_number}`
+
+| Type | Example | Description |
+|------|---------|-------------|
+| Single shot | `scene1_shot1`, `scene2_shot1` | Standard naming |
+
+---
+
+## T2V/I2V Selection Rules
+
+### Project Type and Generation Mode
+
+| Project Type | Material Situation | Generation Mode | Description |
+|--------------|-------------------|-----------------|-------------|
+| **Fiction/Short Drama** | With/without character reference | `img2video` | Mandatory storyboard image |
+| **MV Short Film** | With/without character reference | `img2video` | Mandatory storyboard image |
+| **Vlog/Documentary** | User's real materials | `img2video` | User material first frame |
+| **Commercial/Promotional** | Has real materials | `img2video` | Product material first frame |
+| **Commercial/Promotional** | No real materials | `img2video` | Mandatory storyboard image |
+| No clear type | No materials | `text2video` | Pure text-to-video |
+
+### Decision Tree
 
 ```
-有素材图片吗？
-├── 有 → img2video（图生视频）
-│         └── 使用素材作为首帧
+Have material images?
+├── Yes → img2video (image-to-video)
+│         └── Use material as first frame
 │
-└── 无 → text2video（文生视频）
-          └── 纯文字描述生成
+└── No → text2video (text-to-video)
+          └── Pure text description generation
 ```
 
 ---
 
-## 两阶段流程（虚构片）
+## Two-stage Process (Fiction)
 
-**虚构片/短剧、MV短片必须走两阶段流程**：
+**Fiction/Short Drama, MV Short Films must follow two-stage process**:
 
 ```
-阶段1: Image Prompt → 生成分镜图
+Stage 1: Image Prompt → Generate storyboard image
          ↓
-阶段2: 分镜图作为首帧 → img2video（Veo 3）
+Stage 2: Storyboard image as first frame → img2video (Veo 3)
 ```
 
-### Step 1: 生成分镜图
+### Step 1: Generate Storyboard Image
 
-使用 image_prompt 生成分镜图，如果镜头涉及角色，需引用角色参考图。
+Use image_prompt to generate storyboard image. If shot involves characters, reference character reference image.
 
-### Step 2: 分镜图作为首帧
+### Step 2: Storyboard Image as First Frame
 
-将生成的分镜图作为 `--image` 参数传入 Veo 3 图生视频。
-
----
-
-## 首帧生成策略
-
-### frame_strategy 字段
-
-| frame_strategy | 说明 | 执行方式 |
-|---|------|---------|
-| `none` | 无需首帧 | 直接调用文生视频 API |
-| `first_frame_only` | 仅首帧 | 生成首帧图 → img2video API |
-
-### 分镜图生成流程
-
-当需要生成分镜图作为首帧时：
-
-1. 编写 `image_prompt`（详见 prompt-guide.md）
-2. 使用图片生成模型生成分镜图
-3. 将分镜图作为 `frame_path` 传入 img2video
+Pass the generated storyboard image as `--image` parameter to Veo 3 image-to-video.
 
 ---
 
-## 台词融入 video_prompt
+## First Frame Generation Strategy
 
-当镜头包含台词时，**必须在 video_prompt 中完整描述**：角色（含外貌）、台词内容（引号包裹，**保持角色原语言**）、表情/情绪、声音特质和语速。
+### frame_strategy Field
 
-**Prompt 用英文编写，台词保持角色语言**：
+| frame_strategy | Description | Execution Method |
+|----------------|-------------|------------------|
+| `none` | No first frame needed | Directly call text-to-video API |
+| `first_frame_only` | First frame only | Generate first frame image → img2video API |
+
+### Storyboard Image Generation Process
+
+When need to generate storyboard image as first frame:
+
+1. Write `image_prompt` (see prompt-guide.md for details)
+2. Use image generation model to generate storyboard image
+3. Pass storyboard image as `frame_path` to img2video
+
+---
+
+## Dialogue Integration in video_prompt
+
+When shot contains dialogue, **must fully describe in video_prompt**: character (including appearance), dialogue content (in quotes, **keep character's original language**), expression/emotion, voice quality and speaking rate.
+
+**Prompt written in English, dialogue keeps character language**:
 
 ```json
 {
   "shot_id": "scene1_shot5",
-  "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) looks up at the server, smiling gently and says, '这里真的很安静，我很喜欢。' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
+  "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) looks up at the server, smiling gently and says, 'It's really quiet here, I like it.' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
   "dialogue": {
-    "speaker": "小美",
-    "content": "这里真的很安静，我很喜欢。",
-    "emotion": "温柔、愉悦",
-    "voice_type": "清脆女声"
+    "speaker": "Xiaomei",
+    "content": "It's really quiet here, I like it.",
+    "emotion": "gentle, pleasant",
+    "voice_type": "clear female voice"
   },
   "audio": {
     "enabled": true,
@@ -209,112 +209,112 @@
 }
 ```
 
-### audio 字段说明
+### audio Field Description
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `enabled` | boolean | 是否生成音频（包含环境音 + 台词） |
-| `generate_audio` | boolean | Veo 3 自动生成音频，默认 true |
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | boolean | Whether to generate audio (including ambient sound + dialogue) |
+| `generate_audio` | boolean | Veo 3 auto-generates audio, default true |
 
-### BGM 决策逻辑
+### BGM Decision Logic
 
-BGM 由后期合成，不在视频生成阶段处理：
-- `bgm.type = "ai_generated"` → Suno 生成 BGM，后期混音
-- `bgm.type = "user_provided"` → 用户提供 BGM，后期混音
-- `bgm.type = "none"` → 无 BGM
+BGM is mixed in post-production, not handled during video generation:
+- `bgm.type = "ai_generated"` → Suno generates BGM, post-production mixing
+- `bgm.type = "user_provided"` → User provides BGM, post-production mixing
+- `bgm.type = "none"` → No BGM
 
 ---
 
-## 旁白分段规划（narration_segments）
+## Narration Segmentation Planning (narration_segments)
 
-### 触发条件
+### Trigger Condition
 
-当 `creative.json` 的 `narration.type` 不为 `none` 时，需要规划旁白分段。
+When `creative.json`'s `narration.type` is not `none`, need to plan narration segments.
 
-### 字段结构
+### Field Structure
 
 ```json
 {
   "narration_config": {
-    "voice_style": "温柔女声"    // 映射到 TTS 的 voice + emotion 参数
+    "voice_style": "gentle female voice"    // Maps to TTS voice + emotion parameters
   },
   "narration_segments": [
     {
       "segment_id": "narr_1",
       "overall_time_range": "0-3s",
-      "text": "这是一个宁静的下午..."
+      "text": "This is a peaceful afternoon..."
     },
     {
       "segment_id": "narr_2",
       "overall_time_range": "8-11s",
-      "text": "她坐在窗边..."
+      "text": "She sits by the window..."
     }
   ]
 }
 ```
 
-### 字段说明
+### Field Description
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `narration_config.voice_style` | string | 旁白风格描述，映射到 TTS 参数 |
-| `narration_segments` | array | 旁白分段列表 |
-| `segment_id` | string | 分段编号（narr_1, narr_2...） |
-| `overall_time_range` | string | 时间范围，从视频起点（0秒）开始计算 |
-| `text` | string | 旁白文案 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `narration_config.voice_style` | string | Narration style description, maps to TTS parameters |
+| `narration_segments` | array | Narration segment list |
+| `segment_id` | string | Segment number (narr_1, narr_2...) |
+| `overall_time_range` | string | Time range, calculated from video start point (0 seconds) |
+| `text` | string | Narration copy |
 
-### 规划原则
+### Planning Principles
 
-1. **时间计算**：`overall_time_range` 从视频起点开始，格式为 `"起始秒-结束秒"`
-2. **避开台词**：不要与有角色台词的镜头冲突
-3. **分段长度**：每段控制在 2-5 秒可说完的长度（约 30-50 字）
-4. **内容呼应**：旁白内容要与对应镜头的画面呼应
+1. **Time Calculation**: `overall_time_range` starts from video beginning, format is `"start_sec-end_sec"`
+2. **Avoid Dialogue**: Don't conflict with shots that have character dialogue
+3. **Segment Length**: Each segment should be speakable in 2-5 seconds (about 30-50 characters)
+4. **Content Echo**: Narration content should echo the corresponding shot's visuals
 
-### voice_style 到 TTS 参数映射
+### voice_style to TTS Parameter Mapping
 
 | voice_style | voice | emotion |
 |-------------|-------|---------|
-| "温柔女声" | `female_gentle` | `gentle` |
-| "专业女声旁白" | `female_narrator` | `neutral` |
-| "磁性男声" | `male_warm` | `neutral` |
-| "严肃男声" | `male_narrator` | `serious` |
+| "gentle female voice" | `female_gentle` | `gentle` |
+| "professional female narrator" | `female_narrator` | `neutral` |
+| "warm male voice" | `male_warm` | `neutral` |
+| "serious male voice" | `male_narrator` | `serious` |
 
 ---
 
-## Storyboard JSON 格式
+## Storyboard JSON Format
 
 ```json
 {
-  "project_name": "项目名称",
-  "project_type": "虚构片/短剧",
+  "project_name": "Project Name",
+  "project_type": "Fiction/Short Drama",
   "target_duration": 30,
   "aspect_ratio": "9:16",
   "resolution": "720p",
   "elements": {
     "characters": [
       {
-        "name": "小美",
+        "name": "Xiaomei",
         "gender": "female",
         "reference_image": "/path/to/ref.jpg",
-        "features": "25岁亚洲女性，黑色长直发，瓜子脸"
+        "features": "25-year-old Asian female, long straight black hair, oval face"
       }
     ]
   },
   "scenes": [
     {
       "scene_id": "scene_1",
-      "scene_name": "开场 - 咖啡馆",
+      "scene_name": "Opening - Coffee Shop",
       "duration": 15,
-      "narrative_goal": "展示咖啡馆氛围",
-      "spatial_setting": "温馨的城市咖啡馆",
-      "time_state": "下午3点",
-      "visual_style": "温暖色调，电影感",
+      "narrative_goal": "Show coffee shop atmosphere",
+      "spatial_setting": "Cozy city coffee shop",
+      "time_state": "3 PM",
+      "visual_style": "Warm tones, cinematic",
       "shots": [
         {
           "shot_id": "scene1_shot1",
           "duration": 6,
           "shot_type": "establishing",
-          "description": "咖啡馆全景",
+          "description": "Coffee shop wide shot",
           "generation_mode": "img2video",
           "video_prompt": "Interior of a cozy city coffee shop, afternoon sunlight streaming through large floor-to-ceiling windows, slow push in. Keep 9:16 vertical composition.",
           "image_prompt": "Cinematic realistic start frame. Interior of a cozy city coffee shop, afternoon sunlight streaming through large windows, shallow depth of field, cinematic look, 9:16 aspect ratio",
@@ -331,19 +331,19 @@ BGM 由后期合成，不在视频生成阶段处理：
           "shot_id": "scene1_shot2",
           "duration": 6,
           "shot_type": "closeup",
-          "description": "女主角特写",
+          "description": "Female protagonist close-up",
           "generation_mode": "img2video",
-          "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) sits by the coffee shop window, smiling gently and says, '这里真的很安静，我很喜欢。' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
+          "video_prompt": "Xiaomei (a 25-year-old Asian woman with long black hair) sits by the coffee shop window, smiling gently and says, 'It's really quiet here, I like it.' Clear, pleasant voice, moderate pace. Keep 9:16 vertical composition.",
           "image_prompt": "Cinematic realistic start frame. A 25-year-old Asian woman with long black hair, wearing a white shirt, sitting by the coffee shop window with a gentle smile, warm lighting, cinematic look, 9:16 aspect ratio",
           "frame_path": "generated/frames/scene1_shot2_frame.png",
           "dialogue": {
-            "speaker": "小美",
-            "content": "这里真的很安静，我很喜欢。",
-            "emotion": "温柔、愉悦",
-            "voice_type": "清脆女声"
+            "speaker": "Xiaomei",
+            "content": "It's really quiet here, I like it.",
+            "emotion": "gentle, pleasant",
+            "voice_type": "clear female voice"
           },
           "transition": "cut",
-          "characters": ["小美"],
+          "characters": ["Xiaomei"],
           "audio": {
             "enabled": true,
             "generate_audio": true
@@ -359,42 +359,42 @@ BGM 由后期合成，不在视频生成阶段处理：
 
 ---
 
-## Review 检查机制
+## Review Check Mechanism
 
-生成 storyboard 后，必须检查以下项目：
+After generating storyboard, must check the following items:
 
-**1. 结构完整性**
-- 总时长 = 镜头数 × 单镜头时长（通常 8秒）
-- 场景时长 = 下属分镜时长之和
+**1. Structural Completeness**
+- Total duration = Number of shots × Single shot duration (usually 8 seconds)
+- Scene duration = Sum of subordinate shot durations
 
-**2. 分镜规则**
-- 每个分镜时长 4/6/8 秒（1080p/4k 必须用 8秒）
-- 无多动作分镜、无分镜内空间变化
+**2. Storyboard Rules**
+- Each shot duration 4/6/8 seconds (1080p/4k must use 8 seconds)
+- No multi-action shots, no spatial changes within shots
 
-**3. Prompt 规范**
-- 所有 video_prompt 包含比例信息
-- 台词已融入 video_prompt
-- 无抽象动作描述
+**3. Prompt Standards**
+- All video_prompts include aspect ratio information
+- Dialogue integrated into video_prompt
+- No abstract action descriptions
 
-**4. 技术选择**
-- text2video/img2video 选择合理
-- 虚构片强制 img2video + 分镜图
-- 分辨率设置正确
+**4. Technical Selection**
+- text2video/img2video selection is reasonable
+- Fiction mandatory img2video + storyboard image
+- Resolution set correctly
 
 ---
 
-## 展示给用户确认
+## Present to User for Confirmation
 
-**必须在用户明确确认后，才能进入执行阶段！**
+**Must have explicit user confirmation before entering execution phase!**
 
-确认时展示每个镜头的：
-- 场景信息
-- 生成模式（text2video/img2video）
+When confirming, display for each shot:
+- Scene information
+- Generation mode (text2video/img2video)
 - video_prompt
-- image_prompt（如有）
-- frame_path（如有）
-- 台词
-- 时长
-- 转场
+- image_prompt (if any)
+- frame_path (if any)
+- Dialogue
+- Duration
+- Transition
 
-用户可选择：确认并执行 / 修改分镜 / 调整时长 / 更换转场 / 取消
+User can choose: Confirm and Execute / Modify Storyboard / Adjust Narration / Adjust Duration / Change Transition / Cancel
